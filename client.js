@@ -1,6 +1,6 @@
 const net = require("net");
-const server = "example.com";
-const port = 80;
+const server = "localhost";
+const port = 3000;
 
 const request = `GET / HTTP/1.1
 Host: ${server}
