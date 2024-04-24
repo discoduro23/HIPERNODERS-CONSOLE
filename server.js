@@ -3,13 +3,46 @@ const url = require('url');
 const fs = require('fs');
 const os = require('os');
 
+const options = {
+  key: fs.readFileSync('./key.pem'),
+  cert: fs.readFileSync('./cert.pem')
+};
+const API_KEY = 'hiperKEY_24'; // Reemplaza esto con tu clave de API
+
 // Los recursos se cargan desde un archivo al inicio
 let resources = [];
-fs.readFile('resources.json', (err, data) => {
-  if (!err) {
-    resources = JSON.parse(data);
-  }
-});
+
+//Los usuarios se cargan al inicio
+let userdb = [];
+
+// fs.readFile('resources.json', (err, data) => {
+//   if (!err) {
+//     resources = JSON.parse(data);
+//   }
+// });
+
+function loadJson() {
+  let loaddata = [
+    "resources.json",
+    "usersdb.json"
+  ]
+
+  loaddata.forEach(element => {
+    fs.readFile(element, (err, data) => {
+      if (element = "resources.json") {
+        resources = JSON.parse(data);
+      } else {
+        userdb = JSON.parse(data);
+      }
+    })
+  });
+
+  console.log(resources);
+  console.log(userdb);
+}
+
+//cargar los datos json
+loadJson();
 
 // Función para guardar los recursos en un archivo
 function saveResources() {
@@ -20,9 +53,17 @@ function saveResources() {
   });
 }
 
-const server = http.createServer((req, res) => {
+const server = http.createServer(options, (req, res) => {
   const parsedUrl = url.parse(req.url, true);
   const path = parsedUrl.pathname;
+
+
+    const requestApiKey = req.headers['x-api-key'];
+    if (requestApiKey !== API_KEY) {
+      res.writeHead(403);
+      res.end('403 Forbidden');
+      return;
+    }
 
   if (path === '/') {
     fs.readFile(__dirname + '/index.html', (err, data) => {
@@ -34,57 +75,34 @@ const server = http.createServer((req, res) => {
       res.writeHead(200, {'Content-Type': 'text/html'});
       res.end(data);
     });
-  } else if (path === '/addResource' && req.method === 'POST') {
+  } else if (path === '/resources' && req.method === 'POST') {
     let body = '';
     req.on('data', chunk => {
       body += chunk.toString();
     });
     req.on('end', () => {
-      const resource = JSON.parse(body);
+      const resourceContent = JSON.parse(body);
+      const resource = { id: id++, content: resourceContent }; // Crea el recurso con ID y contenido
       resources.push(resource);
       saveResources(); 
       res.writeHead(201);
       res.end('Resource added successfully');
     });
-  } else if (path === '/viewResources') {
+  }else if (path === '/resources'  && req.method === 'GET') {
     res.writeHead(200, {'Content-Type': 'application/json'});
     res.end(JSON.stringify(resources));
-  } else if (path === '/modifyResource' && req.method === 'PUT') {
+  } else if (path === '/resources' && req.method === 'POST') {
     let body = '';
     req.on('data', chunk => {
       body += chunk.toString();
     });
     req.on('end', () => {
-      const resource = JSON.parse(body);
-      const index = resources.findIndex(r => r.id === resource.id);
-      console.log(index);
-      if (index !== -1) {
-        resources[index] = resource;
-        saveResources();
-        res.writeHead(200);
-        res.end('Resource modified successfully');
-      } else {
-        res.writeHead(404);
-        res.end('Resource not found');
-      }
-    });
-  } else if (path === '/deleteResource' && req.method === 'DELETE') {
-    let body = '';
-    req.on('data', chunk => {
-      body += chunk.toString();
-    });
-    req.on('end', () => {
-      const resource = JSON.parse(body);
-      const index = resources.findIndex(r => r.id === resource.id);
-      if (index !== -1) {
-        resources.splice(index, 1);
-        saveResources();
-        res.writeHead(200);
-        res.end('Resource deleted successfully');
-      } else {
-        res.writeHead(404);
-        res.end('Resource not found');
-      }
+      const resourceContent = JSON.parse(body);
+      const resource = { id: id++, content: resourceContent }; // Crea el recurso con ID y contenido
+      resources.push(resource);
+      saveResources(); 
+      res.writeHead(201);
+      res.end('Resource added successfully');
     });
   } else {
     res.writeHead(404);
