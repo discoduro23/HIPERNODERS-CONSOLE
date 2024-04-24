@@ -1,25 +1,32 @@
-const http = require('http');
+const https = require('https');
 const url = require('url');
 const fs = require('fs');
 const os = require('os');
 
+// Cargar clave privada y certificado para HTTPS
 const options = {
-  key: fs.readFileSync('./key.pem'),
-  cert: fs.readFileSync('./cert.pem')
+  key: fs.readFileSync('key.pem'), // Ajusta la ruta
+  cert: fs.readFileSync('cert.pem') // Ajusta la ruta
 };
-const API_KEY = 'hiperKEY_24'; // Reemplaza esto con tu clave de API
 
-// Los recursos se cargan desde un archivo al inicio
+
+// Define the api key as "hiperKEY_24"
+const API_KEY = 'hiperKEY_24';
+
+// Los recursos se cargan al inicio
 let resources = [];
-
-//Los usuarios se cargan al inicio
 let userdb = [];
 
-// fs.readFile('resources.json', (err, data) => {
-//   if (!err) {
-//     resources = JSON.parse(data);
-//   }
-// });
+function generateToken() {
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let token = '';
+  for (let i = 0; i < 10; i++) {
+    const randomIndex = Math.floor(Math.random() * characters.length);
+    token += characters[randomIndex];
+  }
+  return token;
+}
+
 
 function loadJson() {
   let loaddata = [
@@ -36,9 +43,6 @@ function loadJson() {
       }
     })
   });
-
-  console.log(resources);
-  console.log(userdb);
 }
 
 //cargar los datos json
@@ -53,7 +57,7 @@ function saveResources() {
   });
 }
 
-const server = http.createServer(options, (req, res) => {
+const server = https.createServer(options, (req, res) => {
   const parsedUrl = url.parse(req.url, true);
   const path = parsedUrl.pathname;
 
@@ -81,6 +85,8 @@ const server = http.createServer(options, (req, res) => {
       body += chunk.toString();
     });
     req.on('end', () => {
+      // search the id
+      let id = 1;
       const resourceContent = JSON.parse(body);
       const resource = { id: id++, content: resourceContent }; // Crea el recurso con ID y contenido
       resources.push(resource);
@@ -123,8 +129,8 @@ for (let interface in networkInterfaces) {
   }
 }
 
+
 const port = process.env.PORT || process.argv[2] || 3008;
 server.listen(port, () => {
-  console.log(`HiperServer listening on http://${ip}:${port}`);
+  console.log(`HiperServer listening on https://${ip}:${port}`);
 });
-
