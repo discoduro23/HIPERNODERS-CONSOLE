@@ -1,13 +1,21 @@
-const http = require('http');
+const https = require('https');
 const url = require('url');
 const fs = require('fs');
 const os = require('os');
+
+// Cargar clave privada y certificado para HTTPS
+const options = {
+  key: fs.readFileSync('key.pem'), // Ajusta la ruta
+  cert: fs.readFileSync('cert.pem') // Ajusta la ruta
+};
 
 // Los recursos se cargan desde un archivo al inicio
 let resources = [];
 fs.readFile('resources.json', (err, data) => {
   if (!err) {
     resources = JSON.parse(data);
+  } else {
+    console.error("Error loading resources:", err);
   }
 });
 
@@ -20,8 +28,8 @@ function saveResources() {
   });
 }
 
-const server = http.createServer((req, res) => {
-  const parsedUrl = url.parse(req.url, true);
+const server = https.createServer(options, (req, res) => {
+  const parsedUrl = new URL(req.url, `https://${req.headers.host}`);
   const path = parsedUrl.pathname;
 
   if (path === '/') {
@@ -40,11 +48,16 @@ const server = http.createServer((req, res) => {
       body += chunk.toString();
     });
     req.on('end', () => {
-      const resource = JSON.parse(body);
-      resources.push(resource);
-      saveResources(); 
-      res.writeHead(201);
-      res.end('Resource added successfully');
+      try {
+        const resource = JSON.parse(body);
+        resources.push(resource);
+        saveResources(); 
+        res.writeHead(201);
+        res.end('Resource added successfully');
+      } catch (err) {
+        res.writeHead(400);
+        res.end("Invalid JSON");
+      }
     });
   } else if (path === '/viewResources') {
     res.writeHead(200, {'Content-Type': 'application/json'});
@@ -55,17 +68,21 @@ const server = http.createServer((req, res) => {
       body += chunk.toString();
     });
     req.on('end', () => {
-      const resource = JSON.parse(body);
-      const index = resources.findIndex(r => r.id === resource.id);
-      console.log(index);
-      if (index !== -1) {
-        resources[index] = resource;
-        saveResources();
-        res.writeHead(200);
-        res.end('Resource modified successfully');
-      } else {
-        res.writeHead(404);
-        res.end('Resource not found');
+      try {
+        const resource = JSON.parse(body);
+        const index = resources.findIndex(r => r.id === resource.id);
+        if (index !== -1) {
+          resources[index] = resource;
+          saveResources();
+          res.writeHead(200);
+          res.end('Resource modified successfully');
+        } else {
+          res.writeHead(404);
+          res.end('Resource not found');
+        }
+      } catch (err) {
+        res.writeHead(400);
+        res.end("Invalid JSON");
       }
     });
   } else if (path === '/deleteResource' && req.method === 'DELETE') {
@@ -74,16 +91,21 @@ const server = http.createServer((req, res) => {
       body += chunk.toString();
     });
     req.on('end', () => {
-      const resource = JSON.parse(body);
-      const index = resources.findIndex(r => r.id === resource.id);
-      if (index !== -1) {
-        resources.splice(index, 1);
-        saveResources();
-        res.writeHead(200);
-        res.end('Resource deleted successfully');
-      } else {
-        res.writeHead(404);
-        res.end('Resource not found');
+      try {
+        const resource = JSON.parse(body);
+        const index = resources.findIndex(r => r.id === resource.id);
+        if (index !== -1) {
+          resources.splice(index, 1);
+          saveResources();
+          res.writeHead(200);
+          res.end('Resource deleted successfully');
+        } else {
+          res.writeHead(404);
+          res.end('Resource not found');
+        }
+      } catch (err) {
+        res.writeHead(400);
+        res.end("Invalid JSON");
       }
     });
   } else {
@@ -91,8 +113,6 @@ const server = http.createServer((req, res) => {
     res.end('404 Not Found');
   }
 });
-
-
 
 // Obtén la dirección IP de la red
 const networkInterfaces = os.networkInterfaces();
@@ -107,6 +127,5 @@ for (let interface in networkInterfaces) {
 
 const port = process.env.PORT || process.argv[2] || 3008;
 server.listen(port, () => {
-  console.log(`HiperServer listening on http://${ip}:${port}`);
+  console.log(`HiperServer listening on https://${ip}:${port}`);
 });
-
