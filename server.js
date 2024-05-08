@@ -1,23 +1,34 @@
+
 const fs = require('fs');
 const os = require('os');
 const net = require('net');
-const dot = require('dotenv').config();
 const crypto = require('crypto');
+const dotenv = require('dotenv').config();
 
 // Crear un objeto Diffie-Hellman
-const dh = crypto.createDiffieHellman(2048);
-const serverKeys = dh.generateKeys();
-
-// Paths
-const resourcesPath = 'data/resources.json';
-const usersPath = 'data/usersdb.json';
+// console.log('Creando objeto Diffie-Hellman...');
+// const dh = crypto.createDiffieHellman(2048);
+// const serverKeys = dh.generateKeys();
+// console.log('Llave pública del servidor:', serverKeys.toString('hex'));
 
 // Cargar clave privada y certificado para HTTPS
 const serverPrivateKey = fs.readFileSync('key.pem').toString();
 const serverCertificate = fs.readFileSync('cert.pem').toString();
 
+// Paths
+const resourcesPath = 'data/resources.json';
+const usersPath = 'data/usersdb.json';
+
+
 // Create a write stream for the log file
 const logStream = fs.createWriteStream('server.log', { flags: 'a' });
+// Define the api key as "hiperKEY_24"
+const API_KEY = dotenv.parsed.API_KEY;
+// Los recursos se cargan al inicio
+let resources = [];
+let userdb = [];
+let lastResourceId = 0;
+
 
 // Function to log messages with a timestamp and a log level
 function log(level, message) {
@@ -27,28 +38,12 @@ function log(level, message) {
   console.log(logMessage);
 }
 
-// Define the api key as "hiperKEY_24"
-const API_KEY = dot.parsed.API_KEY;
-// Los recursos se cargan al inicio
-let resources = [];
-let userdb = [];
-let lastResourceId = 0;
-
-function generateToken() {
-  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let token = '';
-  for (let i = 0; i < 10; i++) {
-    const randomIndex = Math.floor(Math.random() * characters.length);
-    token += characters[randomIndex];
-  }
-  return token;
-}
-
 function loadJson() {
   let loaddata = [
     resourcesPath,
     usersPath
   ]
+  
 
   loaddata.forEach(element => {
     fs.readFile(element, (err, data) => {
@@ -63,7 +58,6 @@ function loadJson() {
     })
   });
 }
-
 //cargar los datos json
 loadJson();
 
@@ -91,19 +85,13 @@ function writePacket(socket, statusCode, statusMessage, contentType, body) {
 
 const server = net.createServer((socket) => {
   log('INFO', '[CLIENT START]');
+  // Envía la llave pública del servidor al cliente
+  // socket.write(serverKeys);
 
   socket.on('data', (data) => {
-    const clientPublicKey = data;  // Asumimos que el cliente envía su llave pública
-    const secret = dh.computeSecret(clientPublicKey);  // Calcular el secreto compartido
-    // Aquí usarías `secret` para cifrar/descifrar mensajes
-    console.log('Secreto compartido establecido:', secret.toString('hex'));
-
-
-    console.log("Data received from client:", data.toString());
-
     // Simulamos el handshake enviando el certificado del servidor al cliente
-    socket.write(serverCertificate);
-    
+    // socket.write(serverCertificate);
+
 
     const request = data.toString();
     log('DEBUG', `Received request: ${request}`);
@@ -155,9 +143,12 @@ const server = net.createServer((socket) => {
 
       // Processing resource content
       const resourceContent = JSON.parse(body);
+      //obtener de resourceconten nombre y provincias
+      
+
       const newResourceId = ++lastResourceId;
-      const resouranew = { }
-      const resource = { id: newResourceId, content: resourceContent }; // Assigning unique ID
+      const resource = [id = newResourceId, nombre = resourceContent.nombre, provincias = resourceContent.provincias || ["N/A"]  ]
+      //const resource = { id: newResourceId, content: resourceContent }; // Assigning unique ID
       resources.push(resource);
       saveResources();
 
@@ -214,19 +205,11 @@ const server = net.createServer((socket) => {
       socket.end();
     }
   });
-  // Envía la llave pública del servidor al cliente
-  socket.write(serverKeys);
 
   socket.on('end', () => {
     log('INFO', '[CLIENT END]');
   });
 });
-
-
-server.listen(3001, () => {
-console.log('Server listening on port 3001');
-});
-
 
 // Obtén la dirección IP de la red
 const networkInterfaces = os.networkInterfaces();

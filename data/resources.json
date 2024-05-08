@@ -1,171 +1,168 @@
-{
-    "comunidades": [
-      {
+[
+    {
         "id": 1,
         "nombre": "Andalucía",
         "provincias": [
-          "Almería",
-          "Cádiz",
-          "Córdoba",
-          "Granada",
-          "Huelva",
-          "Jaén",
-          "Málaga",
-          "Sevilla"
+            "Almería",
+            "Cádiz",
+            "Córdoba",
+            "Granada",
+            "Huelva",
+            "Jaén",
+            "Málaga",
+            "Sevilla"
         ]
-      },
-      {
+    },
+    {
         "id": 2,
         "nombre": "Aragón",
         "provincias": [
-          "Huesca",
-          "Teruel",
-          "Zaragoza"
+            "Huesca",
+            "Teruel",
+            "Zaragoza"
         ]
-      },
-      {
+    },
+    {
         "id": 3,
         "nombre": "Asturias",
         "provincias": [
-          "Asturias"
+            "Asturias"
         ]
-      },
-      {
+    },
+    {
         "id": 4,
         "nombre": "Islas Baleares",
         "provincias": [
-          "Islas Baleares"
+            "Islas Baleares"
         ]
-      },
-      {
+    },
+    {
         "id": 5,
         "nombre": "Canarias",
         "provincias": [
-          "Santa Cruz de Tenerife",
-          "Las Palmas"
+            "Santa Cruz de Tenerife",
+            "Las Palmas"
         ]
-      },
-      {
+    },
+    {
         "id": 6,
         "nombre": "Cantabria",
         "provincias": [
-          "Cantabria"
+            "Cantabria"
         ]
-      },
-      {
+    },
+    {
         "id": 7,
         "nombre": "Castilla y León",
         "provincias": [
-          "Ávila",
-          "Burgos",
-          "León",
-          "Palencia",
-          "Salamanca",
-          "Segovia",
-          "Soria",
-          "Valladolid",
-          "Zamora"
+            "Ávila",
+            "Burgos",
+            "León",
+            "Palencia",
+            "Salamanca",
+            "Segovia",
+            "Soria",
+            "Valladolid",
+            "Zamora"
         ]
-      },
-      {
+    },
+    {
         "id": 8,
         "nombre": "Castilla-La Mancha",
         "provincias": [
-          "Albacete",
-          "Ciudad Real",
-          "Cuenca",
-          "Guadalajara",
-          "Toledo"
+            "Albacete",
+            "Ciudad Real",
+            "Cuenca",
+            "Guadalajara",
+            "Toledo"
         ]
-      },
-      {
+    },
+    {
         "id": 9,
         "nombre": "Cataluña",
         "provincias": [
-          "Barcelona",
-          "Girona",
-          "Lleida",
-          "Tarragona"
+            "Barcelona",
+            "Girona",
+            "Lleida",
+            "Tarragona"
         ]
-      },
-      {
+    },
+    {
         "id": 10,
         "nombre": "Comunidad Valenciana",
         "provincias": [
-          "Alicante",
-          "Castellón",
-          "Valencia"
+            "Alicante",
+            "Castellón",
+            "Valencia"
         ]
-      },
-      {
+    },
+    {
         "id": 11,
         "nombre": "Extremadura",
         "provincias": [
-          "Badajoz",
-          "Cáceres"
+            "Badajoz",
+            "Cáceres"
         ]
-      },
-      {
+    },
+    {
         "id": 12,
         "nombre": "Galicia",
         "provincias": [
-          "A Coruña",
-          "Lugo",
-          "Ourense",
-          "Pontevedra"
+            "A Coruña",
+            "Lugo",
+            "Ourense",
+            "Pontevedra"
         ]
-      },
-      {
+    },
+    {
         "id": 13,
         "nombre": "Madrid",
         "provincias": [
-          "Madrid"
+            "Madrid"
         ]
-      },
-      {
+    },
+    {
         "id": 14,
         "nombre": "Murcia",
         "provincias": [
-          "Murcia"
+            "Murcia"
         ]
-      },
-      {
+    },
+    {
         "id": 15,
         "nombre": "Navarra",
         "provincias": [
-          "Navarra"
+            "Navarra"
         ]
-      },
-      {
+    },
+    {
         "id": 16,
         "nombre": "País Vasco",
         "provincias": [
-          "Álava",
-          "Bizkaia",
-          "Gipuzkoa"
+            "Álava",
+            "Bizkaia",
+            "Gipuzkoa"
         ]
-      },
-      {
+    },
+    {
         "id": 17,
         "nombre": "Rioja",
         "provincias": [
-          "La Rioja"
+            "La Rioja"
         ]
-      },
-      {
+    },
+    {
         "id": 18,
         "nombre": "Ceuta",
         "provincias": [
-          "Ceuta"
+            "Ceuta"
         ]
-      },
-      {
+    },
+    {
         "id": 19,
         "nombre": "Melilla",
         "provincias": [
-          "Melilla"
+            "Melilla"
         ]
-      }
-    ]
-  }
-  
+    }
+]
