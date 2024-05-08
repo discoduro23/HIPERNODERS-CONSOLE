@@ -1,5 +1,6 @@
 {
-    {
+    "comunidades": [
+      {
         "id": 1,
         "nombre": "Andalucía",
         "provincias": [
@@ -165,5 +166,6 @@
           "Melilla"
         ]
       }
-}
+    ]
+  }
   
