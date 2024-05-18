@@ -143,12 +143,14 @@ const server = net.createServer((socket) => {
 
       // Processing resource content
       const resourceContent = JSON.parse(body);
-      //obtener de resourceconten nombre y provincias
-      
 
       const newResourceId = ++lastResourceId;
-      const resource = [id = newResourceId, nombre = resourceContent.nombre, provincias = resourceContent.provincias || ["N/A"]  ]
-      //const resource = { id: newResourceId, content: resourceContent }; // Assigning unique ID
+
+      const resource = {
+        id: newResourceId,  
+        nombre: resourceContent.nombre,     
+        provincias: resourceContent.provincias ?? ["N/A"]  
+      };
       resources.push(resource);
       saveResources();
 
@@ -156,6 +158,7 @@ const server = net.createServer((socket) => {
       log('INFO', `Resource added with ID ${newResourceId}`);
       socket.end();
     } else if (requestLine[0] === 'GET' && path === '/resources') {
+      
       // Handle GET request for resources
       writePacket(socket, 200, 'OK', 'application/json', JSON.stringify(resources));
       log('INFO', 'Resources sent');
@@ -175,7 +178,9 @@ const server = net.createServer((socket) => {
 
         // Processing resource content
         const resourceContent = JSON.parse(body);
-        resources[resourceIndex].content = resourceContent;
+
+        resources[resourceIndex].nombre = resourceContent.nombre ?? resources[resourceIndex].nombre;
+        resources[resourceIndex].provincias = resourceContent.provincias ?? resources[resourceIndex].provincias;
         saveResources();
         writePacket(socket, 200, 'OK', 'text/plain', 'Resource updated successfully');
         log('INFO', `Resource updated with ID ${resourceId}`);
