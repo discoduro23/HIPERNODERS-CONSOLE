@@ -32,7 +32,7 @@ https://github.com/pitazzo/usj-http-project/blob/master/README.md?plain=1
 
 - [x] 🔑 Authentication with API key
 - [ ] 🔐 Authentication with login flow
-- [ ] 📸 Sending and receiving multimedia files
+- [x] 📸 Sending and receiving multimedia files
 - [DOING] ☢️ TLS
 - [x] 📓 Logging
 - [ ] 🧪 Automated Testing
