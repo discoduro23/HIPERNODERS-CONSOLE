@@ -17,29 +17,29 @@ https://github.com/pitazzo/usj-http-project/blob/master/README.md?plain=1
 
 ### 🏗️ HTTP Server
 
-- [ ] Support, at least, the following endpoints, when they are correctly called (correct verb, correct headers...):
-  - [ ] An endpoint that returns static content (e.g., a static HTML file)
-  - [ ] An endpoint that adds a new resource to the server according to the specified payload
-  - [ ] An endpoint that allows viewing a list of resources
-  - [ ] An endpoint that allows modifying a resource
-  - [ ] An endpoint that allows deleting a resource
-- [ ] Return the appropriate error codes if the endpoints are not invoked correctly
-- [ ] Attend to multiple requests concurrently
-- [ ] Offer minimal configuration that allows choosing on which port the server starts
-- [ ] It is not necessary for the resources to be persisted; they can be managed in memory
+- [x] Support, at least, the following endpoints, when they are correctly called (correct verb, correct headers...):
+  - [x] An endpoint that returns static content (e.g., a static HTML file)
+  - [x] An endpoint that adds a new resource to the server according to the specified payload
+  - [x] An endpoint that allows viewing a list of resources
+  - [x] An endpoint that allows modifying a resource
+  - [x] An endpoint that allows deleting a resource
+- [x] Return the appropriate error codes if the endpoints are not invoked correctly
+- [x] Attend to multiple requests concurrently
+- [x] Offer minimal configuration that allows choosing on which port the server starts
+- [x] It is not necessary for the resources to be persisted; they can be managed in memory
 
 ## 🚀 Optional features
 
-- [ ] 🔑 Authentication with API key
+- [x] 🔑 Authentication with API key
 - [ ] 🔐 Authentication with login flow
 - [ ] 📸 Sending and receiving multimedia files
-- [ ] ☢️ TLS
-- [ ] 📓 Logging
+- [DOING] ☢️ TLS
+- [x] 📓 Logging
 - [ ] 🧪 Automated Testing
-- [ ] ☁️ Deployment on a real server
+- [x] ☁️ Deployment on a real server
 - [ ] ⚙️ Refactor with HTTP framework
 - [ ] 💾 Conditional GET with cache
 - [ ] 🎨 GUI for the client
 - [ ] 🍪 Cookies
-- [ ] 🎰 Advanced CRUD
+- [DOING] 🎰 Advanced CRUD
 - [ ] 🧠 Anything else (propose to professor)

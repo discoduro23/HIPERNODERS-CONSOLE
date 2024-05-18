@@ -1,7 +1,7 @@
 
 <html>
   <head>
-    <title>Sistema de APIs</title>
+    <title>Home</title>
 	  <link rel="icon" type="image/png" href="https://i.imgur.com/ETjZmTf.png">
 	  <style>
 		  body { text-align: center; padding: 150px; }
@@ -11,13 +11,36 @@
 		  a { color: #dc8100; text-decoration: none; }
 		  a:hover { color: #333; text-decoration: none; }
 	 </style>
+	 <meta charset="UTF-8">
+	 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+	 <link rel="stylesheet" href="styles.css"> <!-- Enlace a tu archivo CSS -->
   </head>
   <body>
-	<h1>Zona de APIs!</h1>
-        <div>
-            <p>Lo sentimos esta zona se encuentra restringida.</p>
-            <p>&copy; <?php echo date("Y"); ?> Hipers 2024 </p>
-        </div>
-		</div>
+	<h1>Send HTTP Request</h1>
+	<form id="requestForm">
+	  <label for="url">URL:</label>
+	  <input type="text" id="url" name="url" required>
+	  <br>
+	  <label for="method">Method:</label>
+	  <select id="method" name="method">
+		<option value="GET">GET</option>
+		<option value="POST">POST</option>
+		<!-- Add other methods as needed -->
+	  </select>
+	  <br>
+	  <label for="headers">Headers (JSON format):</label>
+	  <textarea id="headers" name="headers"></textarea>
+	  <br>
+	  <label for="body">Body (JSON format):</label>
+	  <textarea id="body" name="body"></textarea>
+	  <br>
+	  <button type="submit">Send Request</button>
+	</form>
+  
+	<h2>Response:</h2>
+	<pre id="response"></pre>
+  
+	<script src="client.js" ></script>
   </body>
+
 </html>

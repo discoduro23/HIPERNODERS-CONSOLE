@@ -1,95 +1,74 @@
 const net = require('net');
-const crypto = require('crypto');
 
-// En ambos, cliente y servidor
-console.log('Creando objeto Diffie-Hellman...');
-const dh = crypto.createDiffieHellman(2048); // Usa un grupo predefinido
-const clientKeys = dh.generateKeys();
+function sendRequest(url, method, headers, body, callback) {
+  const urlObj = new URL(url);
+  const options = {
+    host: urlObj.hostname,
+    port: urlObj.port,
+  };
 
-console.log('Clave pública del cliente:', clientKeys.toString('hex'));
+  const client = net.createConnection(options, () => {
+    console.log('Connected to server');
+    var requestData = `${method} ${urlObj.pathname} HTTP/1.1\r\n`;
 
-let secret, state = 'AWAITING_SERVER_KEY';
+    // Add automatic headers
+    const defaultHeaders = {
+      'Content-Type': 'application/json',
+      'Content-Length': body ? JSON.stringify(body).length : 0,
+      'Host': urlObj.hostname,
+      'Connection': 'keep-alive',
+      'Accept': '*/*',
+      'User-Agent': 'HiperNodeJSClient/1.0.0',
+      'Accept-Encoding': 'gzip, deflate, br',
+    };
 
-// const client = new net.Socket();
-// client.connect(3008, 'localhost', () => {
-//   console.log('\nConnected to server!');
-//   // Envía la clave pública del cliente al servidor
-//   client.write(clientKeys);
-// });
+    const allHeaders = { ...defaultHeaders, ...headers };
 
-const client = new net.Socket();
-client.connect({ port: 8000 }, () => {
-  console.log('\nConectado al servidor');
-  // Envía la clave pública del cliente al servidor justo después de la conexión
-  client.write(JSON.stringify({ type: 'dh-key', publicKey: clientKeys.toString('hex') }));
-});
+    Object.entries(allHeaders).forEach(([key, value]) => {
+      requestData += `${key}: ${value}\r\n`;
+    });
 
-client.on('data', (data) => {
-  let message;
-  try {
-    message = JSON.parse(data.toString());
-  } catch (error) {
-    console.error('Error al parsear el mensaje:', error);
-    return;
-  }
+    requestData += '\r\n';
 
-  if (message.type === 'dh-params' && state === 'AWAITING_SERVER_KEY') {
-    const dh = crypto.createDiffieHellman(Buffer.from(message.prime, 'hex'), Buffer.from(message.generator, 'hex'));
-    const clientKeys = dh.generateKeys();
-    secret = dh.computeSecret(Buffer.from(message.publicKey, 'hex'));
+    if (body) {
+      requestData += JSON.stringify(body);
+    }
 
-    console.log('\nSecreto compartido establecido:', secret.toString('hex'));
-    console.log('\nConversación segura iniciada\n');
+    client.write(requestData);
+  });
 
-    // Ahora cambiamos el estado y enviamos nuestra clave pública
-    state = 'READY_FOR_SECURE_COMMUNICATION';
-    client.write(JSON.stringify({ type: 'dh-key', publicKey: clientKeys.toString('hex') }));
-    
-    // Ahora que tenemos el secreto, encriptamos y enviamos un mensaje seguro
-    const secureMessage = "Hola, este mensaje es seguro";
-    console.log('\nMensaje a cifrar:', secureMessage);
-    const encryptedMessage = encryptData(secureMessage, secret);
-    client.write(JSON.stringify({ type: 'secure-message', data: encryptedMessage }));
-  }
-  else if (message.type === 'secure-message' && state === 'READY_FOR_SECURE_COMMUNICATION') {
-    const decryptedMessage = decryptData(message.data, secret);
-    console.log('Mensaje descifrado del servidor:', decryptedMessage);
-  }
-});
+  let responseData = '';
 
-client.on('close', () => {
-  console.log('Connection closed');
-});
+  client.on('data', (chunk) => {
+    responseData += chunk;
+  });
 
-client.on('error', (err) => {
-  console.error('Error:', err);
-});
+  client.on('end', () => {
+    callback(null, responseData);
+    client.destroy();
+  });
 
-function encryptData(plaintext, secret) {
-  const iv = crypto.randomBytes(16);  // Generar IV
-  console.log("Generated IV (encrypt):", iv.toString('hex'));
-  const key = crypto.createHash('sha256').update(secret).digest().slice(0, 32);
-  const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
-  let encrypted = cipher.update(plaintext, 'utf8', 'hex');
-  encrypted += cipher.final('hex');
-  return iv.toString('hex') + encrypted;  // Prepend IV to encrypted data for transmission
+  client.on('error', (err) => {
+    console.error('Error:', err);
+    callback(err);
+    client.destroy();
+  });
 }
 
 
-function decryptData(encrypted, secret) {
-  try {
-    const iv = Buffer.from(encrypted.slice(0, 32), 'hex'); // Extract IV from the beginning
-    encrypted = encrypted.slice(32);
-    const key = crypto.createHash('sha256').update(secret).digest().slice(0, 32);
-    const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
-    let decrypted = decipher.update(encrypted, 'binary', 'utf8');
-    decrypted += decipher.final('utf8');
-    return decrypted;
-  } catch (err) {
-    console.error("Decryption failed:", err);
-    return null; // Return null or handle the error appropriately
+// ------------------------------------------- 
+
+const body = { name: 'New Resource', data: 'Sample data' }; // Adjust this as needed
+
+// Usage
+const headers = {
+  'x-api-key': 'hiperKEY_24',
+};
+
+sendRequest('http://176.31.196.25:3008/resources', 'GET', headers, body, (err, data) => {
+  if (err) {
+    console.error('Error:', err);
+  } else {
+    console.log('Response:', data);
   }
-}
-
-
-
+});
