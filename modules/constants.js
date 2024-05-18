@@ -10,6 +10,8 @@ const CODE_200 = 200;
 const CODE_200_MESSAGE = 'OK';
 const CODE_201 = 201;
 const CODE_201_MESSAGE = 'Created';
+const CODE_405 = 405;
+const CODE_405_MESSAGE = "Invalid format";
 
 
 module.exports = {
@@ -25,4 +27,6 @@ module.exports = {
     CODE_200_MESSAGE,
     CODE_201,
     CODE_201_MESSAGE,
+    CODE_405,
+    CODE_405_MESSAGE,
 };

@@ -65,30 +65,40 @@ function writePacket(socket, statusCode, statusMessage, contentType, body) {
   } else {
     socket.write(response);
   }
+  socket.end();
 }
 
 const server = net.createServer((socket) => {
   log('INFO', '[CLIENT START]');
-
+  
   let requestData = Buffer.alloc(0);
 
   socket.on('data', (chunk) => {
     requestData = Buffer.concat([requestData, chunk]);
 
     const requestString = requestData.toString();
-    const headerEndIndex = requestString.indexOf('\r\n\r\n');
-
-    if (headerEndIndex !== -1) {
-      processRequest(socket, requestData);
+    if (requestString.includes('\r\n\r\n')) {
+      const headerEndIndex = requestString.indexOf('\r\n\r\n') + 4;
+      const contentLengthMatch = requestString.match(/Content-Length: (\d+)/i);
+      if (contentLengthMatch) {
+        const contentLength = parseInt(contentLengthMatch[1], 10);
+        if (requestData.length >= headerEndIndex + contentLength) {
+          processRequest(socket, requestData);
+          requestData = Buffer.alloc(0);
+        }
+      } else {
+        processRequest(socket, requestData);
+        requestData = Buffer.alloc(0);
+      }
     }
-  });
-
-  socket.on('end', () => {
-    log('INFO', '[CLIENT END]');
   });
 
   socket.on('error', (err) => {
     log('ERROR', `Socket error: ${err.message}`);
+  });
+
+  socket.on('end', () => {
+    log('INFO', '[CLIENT END]');
   });
 });
 
@@ -109,7 +119,11 @@ function processRequest(socket, requestData) {
   const [path, queryParams] = requestLine[1].split('?');
   const params = new URLSearchParams(queryParams || '');
 
-  const headers = {};
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE',
+    'Access-Control-Allow-Headers': 'Content-Type, X-API-Key'
+  };
   for (let i = 1; i < lines.length; i++) {
     const [key, value] = lines[i].split(': ');
     headers[key.toLowerCase()] = value;
@@ -196,35 +210,83 @@ function processRequest(socket, requestData) {
       writePacket(socket, CONST.CODE_404, CONST.CODE_404_MESSAGE);
       log('ERROR', `Resource not found with ID ${resourceId}`);
     }
-  } 
-    else if (requestLine[0] === 'POST' && path === '/images') {
-  let fullImageData = '';
+  } else if (method === 'POST' && path === '/images') {
+    const boundary = headers['content-type'].split('boundary=')[1];
 
-  socket.on('data', (chunk) => {
-    fullImageData += chunk.toString();
-  });
+    // Función para dividir el buffer en partes
+    const splitBuffer = (buffer, separator) => {
+      let parts = [];
+      let start = 0;
+      let index;
+      while ((index = buffer.indexOf(separator, start)) !== -1) {
+        parts.push(buffer.slice(start, index));
+        start = index + separator.length;
+      }
+      parts.push(buffer.slice(start));
+      return parts;
+    };
 
-  socket.on('end', () => {
-    const filename = fullImageData.split('filename="')[1].split('"')[0];
+    const parts = splitBuffer(requestData, Buffer.from(`--${boundary}`)).filter(part => part.length > 0 && part.toString().trim() !== '--');
+
+    const filePart = parts.find(part => part.includes('filename='));
+    if (!filePart) {
+      writePacket(socket, CONST.CODE_400, CONST.CODE_400_MESSAGE, 'text/plain', 'No file uploaded');
+      log('ERROR', 'No file uploaded');
+      return;
+    }
+
+    const contentDispositionMatch = filePart.toString().match(/Content-Disposition: form-data; name="file"; filename="(.+)"/);
+    const contentTypeMatch = filePart.toString().match(/Content-Type: (.+)/);
+
+    if (!contentDispositionMatch || !contentTypeMatch) {
+      writePacket(socket, CONST.CODE_400, CONST.CODE_400_MESSAGE, 'text/plain', 'Invalid file upload');
+      log('ERROR', 'Invalid file upload');
+      return;
+    }
+
+    const filename = contentDispositionMatch[1].trim();
+
+    const filePartString = filePart.toString();
+    const lines = filePartString.split('\r\n');
+
+
+    //Encontrar la línea donde comienza el contenido de la imagen
+    let dataStartIndex = 0;
+    let typeofimage = '';
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].startsWith('Content-Type: image/')) {
+        typeofimage = lines[i].split('image/')[1];
+        if (i + 2 < lines.length) {
+          dataStartIndex = filePartString.indexOf(lines[i + 2]);
+        }
+        break;
+      } 
+    }
+
+    if (typeofimage === '') {
+      writePacket(socket, CONST.CODE_405, CONST.CODE_405_MESSAGE, 'text/plain', 'Invalid file type');
+      log('ERROR', 'Invalid file type');
+      return;
+    }
+
+    // Encontrar el final de los datos del archivo basándonos en `\r\n--` que marca el final de la parte
+    const fileDataEndIndex = filePart.indexOf(Buffer.from('\r\n--'), dataStartIndex);
+
+    // Si `\r\n--` no se encuentra, utilizar la longitud completa de `filePart`
+    const fileData = (fileDataEndIndex !== -1) ? filePart.slice(dataStartIndex, fileDataEndIndex) : filePart.slice(dataStartIndex);
 
     const filePath = imagesDir + filename;
 
-    try {
-      fs.writeFileSync(filePath, fullImageData.split('\r\n\r\n')[1]); // Extract image data after headers
+    fs.writeFile(filePath, fileData, err => {
+      if (err) {
+        writePacket(socket, CONST.CODE_500, CONST.CODE_500_MESSAGE);
+        log('ERROR', 'Error saving image' + err);
+        return;
+      }
       writePacket(socket, CONST.CODE_201, CONST.CODE_201_MESSAGE, 'text/plain', `Image saved as ${filename}`);
       log('INFO', `Image saved: ${filename}`);
-    } catch (err) {
-      writePacket(socket, CONST.CODE_400, CONST.CODE_400_MESSAGE, 'text/plain', 'Error saving image');
-      log('ERROR', 'Error saving image:', err);
-    } finally {
-      socket.end();
-    }
-  });
-}
-  
-  
-  
-  else if (method === 'GET' && path.startsWith('/images')) {
+    });
+  } else if (method === 'GET' && path.startsWith('/images')) {
     const filename = path.split('/images/')[1];
     const filePath = imagesDir + filename;
 
