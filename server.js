@@ -1,15 +1,15 @@
-
 const fs = require('fs');
 const os = require('os');
 const net = require('net');
 const crypto = require('crypto');
+const { count } = require('console');
 const dotenv = require('dotenv').config();
 
 // Crear un objeto Diffie-Hellman
-// console.log('Creando objeto Diffie-Hellman...');
-// const dh = crypto.createDiffieHellman(2048);
-// const serverKeys = dh.generateKeys();
-// console.log('Llave pública del servidor:', serverKeys.toString('hex'));
+console.log('Creando objeto Diffie-Hellman...');
+const dh = crypto.createDiffieHellman(2048);
+const serverKeys = dh.generateKeys();
+console.log('Llave pública del servidor:', serverKeys.toString('hex'));
 
 // Cargar clave privada y certificado para HTTPS
 const serverPrivateKey = fs.readFileSync('key.pem').toString();
@@ -84,16 +84,138 @@ function writePacket(socket, statusCode, statusMessage, contentType, body) {
 }
 
 const server = net.createServer((socket) => {
+  console.log('\nCliente conectado.');
   log('INFO', '[CLIENT START]');
-  // Envía la llave pública del servidor al cliente
-  // socket.write(serverKeys);
+
+  let secret; // Almacenará el secreto compartido
+
+  // Envía los parámetros Diffie-Hellman al cliente
+  const params = {
+    type: 'dh-params',
+    prime: dh.getPrime().toString('hex'),
+    generator: dh.getGenerator().toString('hex'),
+    publicKey: serverKeys.toString('hex')
+  };
+  socket.write(JSON.stringify(params));
 
   socket.on('data', (data) => {
-    // Simulamos el handshake enviando el certificado del servidor al cliente
-    // socket.write(serverCertificate);
+    let message;
+    try {
+      message = JSON.parse(data.toString());
+    } catch (error) {
+      console.error('\nError al parsear el mensaje:', error);
+      return;
+    }
+
+    switch (message.type) {
+      case 'dh-key':
+        try {
+          counter = 0;
+          const clientPublicKey = Buffer.from(message.publicKey, 'hex');
+          secret = dh.computeSecret(clientPublicKey);
+          if(counter == 0){
+          console.log('\nSecreto compartido establecido:', secret.toString('hex'));
+          counter++;
+          }
+          // Confirmar el establecimiento del secreto compartido
+          socket.write(JSON.stringify({ type: 'key-exchange-complete' }));
+
+        } catch (error) {
+          console.error('\nError al establecer el secreto compartido:', error);
+          socket.write(JSON.stringify({ type: 'error', message: 'Failed to establish shared secret' }));
+          socket.end();
+        }
+        break;
+      case 'secure-message':
+        console.log('\nConversación segura iniciada\n');
+        try {
+          const decryptedMessage = decryptData(message.data, secret);
+          console.log('\nMensaje descifrado del cliente:', decryptedMessage);
+          // Procesar el mensaje descifrado como sea necesario
+        } catch (error) {
+          console.error('\nError al descifrar mensaje:', error);
+          socket.write(JSON.stringify({ type: 'error', message: 'Failed to decrypt message' }));
+        }
+        break;
+      default:
+        console.log('\nTipo de mensaje no reconocido:', message.type);
+    }
+  });
+
+  socket.on('end', () => log('INFO', '[CLIENT END]'));
+});
 
 
-    const request = data.toString();
+/**
+ * Encrypts data using AES-256-CBC.
+ * Assumes the first 16 bytes of the secret are used as the IV and the next 32 bytes as the AES key.
+ * @param {string} plaintext - The plaintext data to encrypt.
+ * @param {Buffer} secret - The shared secret used to derive the key and IV.
+ * @returns {Buffer} The encrypted data.
+ */
+
+function encryptData(plaintext, secret) {
+  const iv = crypto.randomBytes(16);  // Generar IV
+  console.log("Generated IV (encrypt):", iv.toString('hex'));
+  const key = crypto.createHash('sha256').update(secret).digest().slice(0, 32);
+  const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+  let encrypted = cipher.update(plaintext, 'utf8', 'binary');
+  encrypted += cipher.final('binary');
+  return iv.toString('hex') + encrypted;  // Prepend IV to encrypted data for transmission
+}
+/**
+ * Decrypts data using AES-256-CBC.
+ * Assumes the first 16 bytes of the secret are used as the IV and the next 32 bytes as the AES key.
+ * @param {Buffer} data - The encrypted data.
+ * @param {Buffer} secret - The shared secret used to derive key and IV.
+ * @returns {string} The decrypted string.
+ */
+
+// Modificar la función para usar la encriptación cuando sea necesario
+function writeSecurePacket(socket, statusCode, statusMessage, contentType, body, secret) {
+  let response = `HTTP/1.1 ${statusCode} ${statusMessage}\r\n`;
+  if (contentType) {
+      response += `Content-Type: ${contentType}\r\n`;
+  }
+  response += '\r\n';
+  if (body) {
+      response += body;
+  }
+  
+  // Encriptar la respuesta completa antes de enviarla
+ // Encriptar la respuesta completa antes de enviarla
+ if (secret) {
+  const encryptedData = encryptData(response, secret);
+  if (encryptedData) {
+      socket.write(encryptedData);
+  } else {
+      console.error('Failed to encrypt response');
+      // Opcional: manejar el error de cifrado (p. ej., cerrar la conexión)
+  }
+} else {
+  socket.write(response);
+}
+}
+
+function decryptData(encrypted, secret) {
+  try {
+    const iv = Buffer.from(encrypted.slice(0, 32), 'hex'); // Extract IV from the beginning
+    encrypted = encrypted.slice(32);
+    const key = crypto.createHash('sha256').update(secret).digest().slice(0, 32);
+    const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
+  } catch (err) {
+    console.error("Decryption failed:", err);
+    return null; // Return null or handle the error appropriately
+  }
+}
+
+
+function processHTTPRequest(data, socket) {
+    const request = secret ? decryptData(data, secret).toString() : data.toString();
+
     log('DEBUG', `Received request: ${request}`);
     const lines = request.split('\r\n');
 
@@ -111,9 +233,7 @@ const server = net.createServer((socket) => {
 
     // Handling API key check
     if (headers['x-api-key'] !== API_KEY) {
-      writePacket(socket, 403, 'Forbidden');
-      log('ERROR', 'Invalid API key');
-      socket.end();
+      writeSecurePacket(socket, 403, 'Forbidden', 'text/plain', 'Invalid API Key', secret);
       return;
     }
 
@@ -122,14 +242,10 @@ const server = net.createServer((socket) => {
       // Handle GET request for root
       fs.readFile(__dirname + '/index.html', (err, data) => {
         if (err) {
-          writePacket(socket, 404, 'Not Found');
-          log('ERROR', 'Root not found');
-          socket.end();
+          writeSecurePacket(socket, 404, 'Not Found', 'text/plain', 'Root not found', secret);
           return;
         }
-        writePacket(socket, 200, 'OK', 'text/html', data);
-        log('INFO', 'Root sent');
-        socket.end();
+        writeSecurePacket(socket, 200, 'OK', 'text/html', data.toString(), secret);
       });
     } else if (requestLine[0] === 'POST' && path === '/resources') {
       // Handle POST request for resources
@@ -153,14 +269,14 @@ const server = net.createServer((socket) => {
       };
       resources.push(resource);
       saveResources();
-
-      writePacket(socket, 201, 'Created', 'text/plain', `Resource added successfully with ID ${newResourceId}`);
+      writeSecurePacket(socket, 201, 'Created', 'text/plain', `Resource added successfully with ID ${newResourceId}`, secret);
+      
       log('INFO', `Resource added with ID ${newResourceId}`);
       socket.end();
     } else if (requestLine[0] === 'GET' && path === '/resources') {
       
       // Handle GET request for resources
-      writePacket(socket, 200, 'OK', 'application/json', JSON.stringify(resources));
+      writeSecurePacket(socket, 200, 'OK', 'application/json', JSON.stringify(resources), secret);
       log('INFO', 'Resources sent');
       socket.end();
     } else if (requestLine[0] === 'PUT' && path === '/resources') {
@@ -182,10 +298,11 @@ const server = net.createServer((socket) => {
         resources[resourceIndex].nombre = resourceContent.nombre ?? resources[resourceIndex].nombre;
         resources[resourceIndex].provincias = resourceContent.provincias ?? resources[resourceIndex].provincias;
         saveResources();
-        writePacket(socket, 200, 'OK', 'text/plain', 'Resource updated successfully');
+        writeSecurePacket(socket, 200, 'OK', 'text/plain', 'Resource updated successfully', secret);
+
         log('INFO', `Resource updated with ID ${resourceId}`);
       } else {
-        writePacket(socket, 404, 'Not Found');
+        writeSecurePacket(socket, 404, 'Not Found', 'text/plain', 'Not found', secret);
         log('ERROR', `Resource not found with ID ${resourceId}`);
       }
       socket.end();
@@ -196,25 +313,18 @@ const server = net.createServer((socket) => {
       if (resourceIndex !== -1) {
         resources.splice(resourceIndex, 1);
         saveResources();
-        writePacket(socket, 200, 'OK', 'text/plain', 'Resource deleted successfully');
+        writeSecurePacket(socket, 200, 'OK', 'text/plain', 'Resource deleted successfully', secret);
         log('INFO', `Resource deleted with ID ${resourceId}`);
       } else {
-        writePacket(socket, 404, 'Not Found');
+        writeSecurePacket(socket, 404, 'Not Found', 'text/plain', 'Not found', secret);
         log('ERROR', `Resource not found with ID ${resourceId}`);
       }
       socket.end();
     } else {
       // Handle unknown endpoints
-      writePacket(socket, 404, 'Not Found');
-      log('ERROR', `Unknown endpoint: ${path}`);
-      socket.end();
+      writeSecurePacket(socket, 404, 'Not Found', 'text/plain', 'Endpoint not found', secret);
     }
-  });
-
-  socket.on('end', () => {
-    log('INFO', '[CLIENT END]');
-  });
-});
+}
 
 // Obtén la dirección IP de la red
 const networkInterfaces = os.networkInterfaces();
@@ -227,8 +337,12 @@ for (let interface in networkInterfaces) {
   }
 }
 
-const port = process.env.PORT || process.argv[2] || 3008;
-server.listen(port, () => {
-  log('INFO', `HiperServer running on http://${ip}:${port}`);
 
+const port = process.env.PORT || process.argv[2] || 3008;
+// server.listen(port, () => {
+//   log('INFO', `HiperServer running on http://${ip}:${port}`);
+
+// });
+server.listen(8000, () => {
+  console.log('Servidor escuchando en el puerto 8000');
 });
