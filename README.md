@@ -5,14 +5,14 @@ https://github.com/pitazzo/usj-http-project/blob/master/README.md?plain=1
 
 ### 🚢 HTTP Client
 
-- [ ] Send HTTP requests, in a way that:
-  - [ ] It is possible to choose the URL to which the request will be sent
-  - [ ] Use any available HTTP verb in the request (GET, HEAD, POST, PUT, DELETE)
-  - [ ] Automatically add the necessary headers to the request so that it can be processed correctly
-  - [ ] Add any other arbitrary header desired by the user
-  - [ ] Specify the body of the request
-- [ ] Receive and display on screen the response message of the sent request
-- [ ] Inform about the request status
+- [x] Send HTTP requests, in a way that:
+  - [x] It is possible to choose the URL to which the request will be sent
+  - [x] Use any available HTTP verb in the request (GET, HEAD, POST, PUT, DELETE)
+  - [x] Automatically add the necessary headers to the request so that it can be processed correctly
+  - [x] Add any other arbitrary header desired by the user
+  - [x] Specify the body of the request
+- [x] Receive and display on screen the response message of the sent request
+- [x] Inform about the request status
 - [ ] Be able to send successive requests, i.e., to send a second request it is not necessary to restart the program
 
 ### 🏗️ HTTP Server
@@ -38,8 +38,8 @@ https://github.com/pitazzo/usj-http-project/blob/master/README.md?plain=1
 - [ ] 🧪 Automated Testing
 - [x] ☁️ Deployment on a real server
 - [ ] ⚙️ Refactor with HTTP framework
-- [ ] 💾 Conditional GET with cache
-- [ ] 🎨 GUI for the client
+- [DOING] 💾 Conditional GET with cache
+- [DOING] 🎨 GUI for the client
 - [ ] 🍪 Cookies
 - [DOING] 🎰 Advanced CRUD
 - [ ] 🧠 Anything else (propose to professor)

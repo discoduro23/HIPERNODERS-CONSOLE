@@ -8,6 +8,15 @@ const resourcesPath = 'data/resources.json';
 const usersPath = 'data/usersdb.json';
 const imagesDir = 'images/';
 
+//TLS
+const crypto = require('crypto');
+
+// Crear un objeto Diffie-Hellman
+console.log('Creando objeto Diffie-Hellman...');
+const dh = crypto.createDiffieHellman(2048);
+const serverKeys = dh.generateKeys();
+console.log('Llave pública del servidor:', serverKeys.toString('hex'));
+
 if (!fs.existsSync(imagesDir)) {
   fs.mkdirSync(imagesDir);
 }
@@ -27,25 +36,29 @@ function log(level, message) {
 }
 
 function loadJson() {
-  let loaddata = [resourcesPath, usersPath];
+  fs.readFile(resourcesPath, (err, data) => {
+    if (err) throw err;
+    resources = JSON.parse(data);
+    if (!resources[0].lastModified) {
+      resources[0].lastModified = new Date().toISOString();
+      saveResources();
+    }
+    if (resources.length > 0) {
+      lastResourceId = resources[resources.length - 1].id;
+    }
+  });
 
-  loaddata.forEach(element => {
-    fs.readFile(element, (err, data) => {
-      if (element === resourcesPath) {
-        resources = JSON.parse(data);
-        if (resources.length > 0) {
-          lastResourceId = resources[resources.length - 1].id;
-        }
-      } else {
-        userdb = JSON.parse(data);
-      }
-    });
+  fs.readFile(usersPath, (err, data) => {
+    if (err) throw err;
+    userdb = JSON.parse(data);
   });
 }
+
 
 loadJson();
 
 function saveResources() {
+  resources[0].lastModified = new Date().toISOString();
   fs.writeFile(resourcesPath, JSON.stringify(resources), err => {
     if (err) {
       console.error('Error al guardar los recursos:', err);
@@ -53,10 +66,16 @@ function saveResources() {
   });
 }
 
-function writePacket(socket, statusCode, statusMessage, contentType, body) {
+
+function writePacket(socket, statusCode, statusMessage, contentType, body, headers) {
   let response = `HTTP/1.1 ${statusCode} ${statusMessage}\r\n`;
   if (contentType) {
     response += `Content-Type: ${contentType}\r\n`;
+  }
+  if (headers) {
+    for (let key in headers) {
+      response += `${key}: ${headers[key]}\r\n`;
+    }
   }
   response += '\r\n';
   if (body) {
@@ -68,9 +87,84 @@ function writePacket(socket, statusCode, statusMessage, contentType, body) {
   socket.end();
 }
 
+// send secure packets
+function writeSecurePacket(socket, statusCode, statusMessage, contentType, body, secret) {
+  let response = `HTTP/1.1 ${statusCode} ${statusMessage}\r\n`;
+  if (contentType) {
+      response += `Content-Type: ${contentType}\r\n`;
+  }
+  response += '\r\n';
+  if (body) {
+      response += body;
+  }
+ // Encriptar la respuesta completa antes de enviarla
+ if (secret) {
+  const encryptedData = encryptData(response, secret);
+  if (encryptedData) {
+      socket.write(encryptedData);
+  } else {
+      console.error('Failed to encrypt response');
+      // Opcional: manejar el error de cifrado (p. ej., cerrar la conexión)
+  }
+} else {
+  socket.write(response);
+}
+}
+
+/**
+ * Encrypts data using AES-256-CBC.
+ * Assumes the first 16 bytes of the secret are used as the IV and the next 32 bytes as the AES key.
+ * @param {string} plaintext - The plaintext data to encrypt.
+ * @param {Buffer} secret - The shared secret used to derive the key and IV.
+ * @returns {Buffer} The encrypted data.
+ */
+
+
+function decryptData(encrypted, secret) {
+  try {
+    const iv = Buffer.from(encrypted.slice(0, 32), 'hex'); // Extract IV from the beginning
+    encrypted = encrypted.slice(32);
+    const key = crypto.createHash('sha256').update(secret).digest().slice(0, 32);
+    const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
+  } catch (err) {
+    console.error("Decryption failed:", err);
+    return null; // Return null or handle the error appropriately
+  }
+}
+
+/**
+ * Decrypts data using AES-256-CBC.
+ * Assumes the first 16 bytes of the secret are used as the IV and the next 32 bytes as the AES key.
+ * @param {Buffer} data - The encrypted data.
+ * @param {Buffer} secret - The shared secret used to derive key and IV.
+ * @returns {string} The decrypted string.
+ */
+function encryptData(plaintext, secret) {
+  const iv = crypto.randomBytes(16);  // Generar IV
+  console.log("Generated IV (encrypt):", iv.toString('hex'));
+  const key = crypto.createHash('sha256').update(secret).digest().slice(0, 32);
+  const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+  let encrypted = cipher.update(plaintext, 'utf8', 'binary');
+  encrypted += cipher.final('binary');
+  return iv.toString('hex') + encrypted;  // Prepend IV to encrypted data for transmission
+}
+
+
 const server = net.createServer((socket) => {
   log('INFO', '[CLIENT START]');
-  
+
+  let secret; // Almacenará el secreto compartido
+  // Envía los parámetros Diffie-Hellman al cliente
+  const params = {
+    type: 'dh-params',
+    prime: dh.getPrime().toString('hex'),
+    generator: dh.getGenerator().toString('hex'),
+    publicKey: serverKeys.toString('hex')
+  };
+  socket.write(JSON.stringify(params));
   let requestData = Buffer.alloc(0);
 
   socket.on('data', (chunk) => {
@@ -104,8 +198,6 @@ const server = net.createServer((socket) => {
 
 function processRequest(socket, requestData) {
   const requestString = requestData.toString();
-  //log('DEBUG', `Received request: ${requestString}`);
-
   const lines = requestString.split('\r\n');
   const requestLine = lines[0] ? lines[0].split(' ') : [];
 
@@ -118,6 +210,7 @@ function processRequest(socket, requestData) {
   const method = requestLine[0];
   const [path, queryParams] = requestLine[1].split('?');
   const params = new URLSearchParams(queryParams || '');
+  
 
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -135,16 +228,17 @@ function processRequest(socket, requestData) {
     return;
   }
 
-  if (method === 'GET' && path === '/') {
-    fs.readFile(__dirname + '/index.html', (err, data) => {
-      if (err) {
-        writePacket(socket, CONST.CODE_404, CONST.CODE_404_MESSAGE);
-        log('ERROR', 'Root not found');
-        return;
-      }
-      writePacket(socket, CONST.CODE_200, CONST.CODE_200_MESSAGE, 'text/html', data);
-      log('INFO', 'Root sent');
-    });
+  if (method === 'GET' && path === '/resources') {
+    const ifModifiedSince = headers['if-modified-since'];
+    const lastModified = resources[0].lastModified;
+
+    if (ifModifiedSince && new Date(ifModifiedSince) >= new Date(lastModified)) {
+      writePacket(socket, CONST.CODE_304, CONST.CODE_304_MESSAGE);
+      log('INFO', 'Resources not modified since last request');
+    } else {
+      writePacket(socket, CONST.CODE_200, CONST.CODE_200_MESSAGE, 'application/json', JSON.stringify(resources));
+      log('INFO', 'Resources sent');
+    }
   } else if (method === 'POST' && path === '/resources') {
     let body = '';
     for (let i = 0; i < lines.length; i++) {
@@ -173,9 +267,22 @@ function processRequest(socket, requestData) {
     writePacket(socket, CONST.CODE_201, CONST.CODE_201_MESSAGE, 'text/plain', `Resource added successfully with ID ${newResourceId}`);
     log('INFO', `Resource added with ID ${newResourceId}`);
   } else if (method === 'GET' && path === '/resources') {
-    writePacket(socket, CONST.CODE_200, CONST.CODE_200_MESSAGE, 'application/json', JSON.stringify(resources));
-    log('INFO', 'Resources sent');
-  } else if (method === 'PUT' && path === '/resources') {
+    const ifModifiedSince = headers['if-modified-since'];
+    const lastModified = resources[0].lastModified;
+  
+    if (ifModifiedSince && new Date(ifModifiedSince) >= new Date(lastModified)) {
+      writePacket(socket, 304, 'Not Modified');
+      log('INFO', 'Resources not modified, using cache');
+    } else {
+      const responseHeaders = {
+        'Content-Type': 'application/json',
+        'Last-Modified': lastModified
+      };
+      writePacket(socket, 200, 'OK', responseHeaders, JSON.stringify(resources));
+      log('INFO', 'Resources sent');
+    }
+  }
+   else if (method === 'PUT' && path === '/resources') {
     const resourceId = parseInt(params.get('id'));
     const resourceIndex = resources.findIndex(resource => resource.id === resourceId);
     if (resourceIndex !== -1) {

@@ -12,6 +12,8 @@ const CODE_201 = 201;
 const CODE_201_MESSAGE = 'Created';
 const CODE_405 = 405;
 const CODE_405_MESSAGE = "Invalid format";
+const CODE_304 = 304;
+const CODE_304_MESSAGE = 'Not Modified';
 
 
 module.exports = {
@@ -29,4 +31,6 @@ module.exports = {
     CODE_201_MESSAGE,
     CODE_405,
     CODE_405_MESSAGE,
+    CODE_304,
+    CODE_304_MESSAGE
 };
