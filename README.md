@@ -13,7 +13,7 @@ https://github.com/pitazzo/usj-http-project/blob/master/README.md?plain=1
   - [x] Specify the body of the request
 - [x] Receive and display on screen the response message of the sent request
 - [x] Inform about the request status
-- [ ] Be able to send successive requests, i.e., to send a second request it is not necessary to restart the program
+- [x] Be able to send successive requests, i.e., to send a second request it is not necessary to restart the program
 
 ### 🏗️ HTTP Server
 
@@ -38,8 +38,8 @@ https://github.com/pitazzo/usj-http-project/blob/master/README.md?plain=1
 - [ ] 🧪 Automated Testing
 - [x] ☁️ Deployment on a real server
 - [ ] ⚙️ Refactor with HTTP framework
-- [DOING] 💾 Conditional GET with cache
+- [x] 💾 Conditional GET with cache
 - [DOING] 🎨 GUI for the client
 - [ ] 🍪 Cookies
-- [DOING] 🎰 Advanced CRUD
+- [ ] 🎰 Advanced CRUD
 - [ ] 🧠 Anything else (propose to professor)

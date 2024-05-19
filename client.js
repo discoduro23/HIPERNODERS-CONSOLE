@@ -21,15 +21,16 @@ function getCache() {
 
 function setCacheHeaders(cachedResources) {
   if (cachedResources && cachedResources.length > 0) {
-    defaultHeaders['If-Modified-Since'] = cachedResources[0].lastModified;
+    return cachedResources[0].lastModified;
   } else {
     delete defaultHeaders['If-Modified-Since'];
   }
+  return null;
 }
 
 // Function to send HTTP requests
 function sendRequest(url, method, headers, body, callback) {
-  setCacheHeaders(getCache());
+  headers['If-Modified-Since'] = setCacheHeaders(getCache());
   const urlObj = new URL(url);
   const options = {
     host: urlObj.hostname,
@@ -119,7 +120,6 @@ function handleResponse(response, callback) {
     console.log('Resource updated successfully.');
   } else if (response.statusCode === 304) {
       const cachedResources = getCache();
-      setCacheHeaders(cachedResources);
       console.log('Resources are up-to-date.');
       console.log('Cached resources:', cachedResources);
   } else if (response.statusCode === 400) {
@@ -139,10 +139,9 @@ function handleResponse(response, callback) {
 
 // Main function to handle the entire process
 function handleRequest(callback) {
-  const cacheHeaders = getCache();
-  setCacheHeaders(cacheHeaders);
-  
-  const headers = { ...defaultHeaders, ...cacheHeaders };
+  let cacheHeaders = {};
+  cacheHeaders['If-Modified-Since'] = setCacheHeaders(getCache());
+  const headers = { ...defaultHeaders, ...cacheHeaders};
   sendRequest('http://176.31.196.25:3008/resources', 'GET', headers, null, (err, response) => {
     if (err) {
       console.error('Error:', err);
@@ -167,6 +166,7 @@ function getInput(prompt) {
 
 // Function to handle manual input
 async function manualRequest(callback) {
+
   let url = await getInput('Enter URL: ');
   // if not provided, use the same as we use in the predefined request
   if (!url) {
@@ -188,6 +188,7 @@ async function manualRequest(callback) {
   let headers = {
     'x-api-key': 'hiperKEY_24',
   };
+
   if (headerString) {
     const headerPairs = headerString.split(',');
     headerPairs.forEach(pair => {
@@ -196,10 +197,7 @@ async function manualRequest(callback) {
     });
   }
 
-  if (method === 'GET' && url === 'http://176.31.196.25:3008/resources') {
-    const cacheHeaders = getCache();
-    headers = { ...headers, ...cacheHeaders };
-  }
+  headers['If-Modified-Since'] = setCacheHeaders(getCache());
 
   let body = null;
   try {
