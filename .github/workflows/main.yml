@@ -1,12 +1,53 @@
-            - name: JEST Report
-  # You may pin to the exact commit or the version.
-  # uses: RedaktionsNetzwerk-Deutschland/action-jest-reporter@6e23f271b4fb10248a260e72fe6d1bcddeea9f4a
-  uses: RedaktionsNetzwerk-Deutschland/action-jest-reporter@v1.0.0
-  with:
-    # The GitHub Token. This is only used, if none is provided via Env.
-    GITHUB_TOKEN: # optional
-    # Glob for matching the Jest Output files
-    json-glob: # optional, default is **/jest-output.json
-    # Specify a custom workdirectory if needed. By default env.GITHUB_WORKSPACE is used.
-    workdir: # optional
-          
+name: Node.js CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '14'
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Ensure data directories exist
+      run: |
+        mkdir -p data
+        mkdir -p data/backup
+        mkdir -p images
+
+    - name: Verify JSON files exist
+      run: |
+        if [ ! -f data/resources.json ]; then
+          echo '[]' > data/resources.json
+        fi
+        if [ ! -f data/usersdb.json ]; then
+          echo '[]' > data/usersdb.json
+        fi
+
+    - name: Set up environment variables
+      run: echo "API_KEY=hiperKEY_24" > .env
+
+    - name: Start server
+      run: |
+        nohup npm start &
+    
+    - name: Wait for server to start
+      run: sleep 10
+
+    - name: Run tests
+      run: npm test
