@@ -35,7 +35,7 @@ https://github.com/pitazzo/usj-http-project/blob/master/README.md?plain=1
 - [x] 📸 Sending and receiving multimedia files
 - [DOING] ☢️ TLS
 - [x] 📓 Logging
-- [ ] 🧪 Automated Testing
+- [x] 🧪 Automated Testing
 - [x] ☁️ Deployment on a real server
 - [ ] ⚙️ Refactor with HTTP framework
 - [x] 💾 Conditional GET with cache

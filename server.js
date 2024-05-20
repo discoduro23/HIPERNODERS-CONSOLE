@@ -8,14 +8,12 @@ const resourcesPath = 'data/resources.json';
 const usersPath = 'data/usersdb.json';
 const imagesDir = 'images/';
 
-
-
 if (!fs.existsSync(imagesDir)) {
   fs.mkdirSync(imagesDir);
 }
 
-const logStream = fs.createWriteStream('server.log', { flags: 'a' });
-const API_KEY = dotenv.parsed.API_KEY;
+let logStream = fs.createWriteStream('server.log', { flags: 'a' });
+const API_KEY = dotenv.parsed.API_KEY || 'hiperKEY_24';
 
 let resources = [];
 let userdb = [];
@@ -31,22 +29,28 @@ function log(level, message) {
 function loadJson() {
   fs.readFile(resourcesPath, (err, data) => {
     if (err) throw err;
-    resources = JSON.parse(data);
-    if (!resources[0].lastModified) {
-      resources[0].lastModified = new Date().toISOString();
-      saveResources();
-    }
-    if (resources.length > 0) {
-      lastResourceId = resources[resources.length - 1].id;
+    try {
+      resources = JSON.parse(data);
+      if (!resources[0].lastModified) {
+        resources[0].lastModified = new Date().toISOString();
+        saveResources();
+      }
+      if (resources.length > 0) {
+        lastResourceId = resources[resources.length - 1].id;
+      }
+    } catch (e) {
+      // Just 
     }
   });
 
   fs.readFile(usersPath, (err, data) => {
     if (err) throw err;
-    userdb = JSON.parse(data);
+    try {
+      userdb = JSON.parse(data);
+    } catch (error) {
+    }
   });
 }
-
 
 loadJson();
 
@@ -54,11 +58,10 @@ function saveResources() {
   resources[0].lastModified = new Date().toISOString();
   fs.writeFile(resourcesPath, JSON.stringify(resources), err => {
     if (err) {
-      console.error('Error al guardar los recursos:', err);
+      console.error('Error saving resources:', err);
     }
   });
 }
-
 
 function writePacket(socket, statusCode, statusMessage, contentType, body, headers) {
   let response = `HTTP/1.1 ${statusCode} ${statusMessage}\r\n`;
@@ -82,7 +85,7 @@ function writePacket(socket, statusCode, statusMessage, contentType, body, heade
 
 const server = net.createServer((socket) => {
   log('INFO', '[CLIENT START]');
-  
+
   let requestData = Buffer.alloc(0);
 
   socket.on('data', (chunk) => {
@@ -114,6 +117,19 @@ const server = net.createServer((socket) => {
   });
 });
 
+server.stop = (callback) => {
+  server.close((err) => {
+    if (err) {
+      console.error("Failed to close server", err);
+    }
+    logStream.end(() => {
+      console.log("Log stream closed.");
+      callback();
+    });
+    console.log("Server shut down successfully.");
+  });
+};
+
 function processRequest(socket, requestData) {
   const requestString = requestData.toString();
   const lines = requestString.split('\r\n');
@@ -128,16 +144,13 @@ function processRequest(socket, requestData) {
   const method = requestLine[0];
   const [path, queryParams] = requestLine[1].split('?');
   const params = new URLSearchParams(queryParams || '');
-  
 
-  const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE',
-    'Access-Control-Allow-Headers': 'Content-Type, X-API-Key'
-  };
+  const headers = {};
   for (let i = 1; i < lines.length; i++) {
     const [key, value] = lines[i].split(': ');
-    headers[key.toLowerCase()] = value;
+    if (key && value) {
+      headers[key.toLowerCase()] = value;
+    }
   }
 
   if (headers['x-api-key'] !== API_KEY) {
@@ -146,7 +159,10 @@ function processRequest(socket, requestData) {
     return;
   }
 
-  if (method === 'GET' && path === '/resources') {
+  if (method === 'GET' && path === '/') {
+    writePacket(socket, CONST.CODE_404, CONST.CODE_404_MESSAGE);
+    log('ERROR', 'Root endpoint not found');
+  } else if (method === 'GET' && path === '/resources') {
     const ifModifiedSince = headers['if-modified-since'];
     const lastModified = resources[0].lastModified;
 
@@ -184,23 +200,7 @@ function processRequest(socket, requestData) {
 
     writePacket(socket, CONST.CODE_201, CONST.CODE_201_MESSAGE, 'text/plain', `Resource added successfully with ID ${newResourceId}`);
     log('INFO', `Resource added with ID ${newResourceId}`);
-  } else if (method === 'GET' && path === '/resources') {
-    const ifModifiedSince = headers['if-modified-since'];
-    const lastModified = resources[0].lastModified;
-  
-    if (ifModifiedSince && new Date(ifModifiedSince) >= new Date(lastModified)) {
-      writePacket(socket, 304, 'Not Modified');
-      log('INFO', 'Resources not modified, using cache');
-    } else {
-      const responseHeaders = {
-        'Content-Type': 'application/json',
-        'Last-Modified': lastModified
-      };
-      writePacket(socket, 200, 'OK', responseHeaders, JSON.stringify(resources));
-      log('INFO', 'Resources sent');
-    }
-  }
-   else if (method === 'PUT' && path === '/resources') {
+  } else if (method === 'PUT' && path === '/resources') {
     const resourceId = parseInt(params.get('id'));
     const resourceIndex = resources.findIndex(resource => resource.id === resourceId);
     if (resourceIndex !== -1) {
@@ -238,7 +238,6 @@ function processRequest(socket, requestData) {
   } else if (method === 'POST' && path === '/images') {
     const boundary = headers['content-type'].split('boundary=')[1];
 
-    // Función para dividir el buffer en partes
     const splitBuffer = (buffer, separator) => {
       let parts = [];
       let start = 0;
@@ -274,13 +273,9 @@ function processRequest(socket, requestData) {
     const filePartString = filePart.toString();
     const lines = filePartString.split('\r\n');
 
-
-    //Encontrar la línea donde comienza el contenido de la imagen
     let dataStartIndex = 0;
-    let typeofimage = '';
     for (let i = 0; i < lines.length; i++) {
       if (lines[i].startsWith('Content-Type: image/')) {
-        typeofimage = lines[i].split('image/')[1];
         if (i + 2 < lines.length) {
           dataStartIndex = filePartString.indexOf(lines[i + 2]);
         }
@@ -288,16 +283,7 @@ function processRequest(socket, requestData) {
       } 
     }
 
-    if (typeofimage === '') {
-      writePacket(socket, CONST.CODE_405, CONST.CODE_405_MESSAGE, 'text/plain', 'Invalid file type');
-      log('ERROR', 'Invalid file type');
-      return;
-    }
-
-    // Encontrar el final de los datos del archivo basándonos en `\r\n--` que marca el final de la parte
     const fileDataEndIndex = filePart.indexOf(Buffer.from('\r\n--'), dataStartIndex);
-
-    // Si `\r\n--` no se encuentra, utilizar la longitud completa de `filePart`
     const fileData = (fileDataEndIndex !== -1) ? filePart.slice(dataStartIndex, fileDataEndIndex) : filePart.slice(dataStartIndex);
 
     const filePath = imagesDir + filename;
@@ -305,7 +291,7 @@ function processRequest(socket, requestData) {
     fs.writeFile(filePath, fileData, err => {
       if (err) {
         writePacket(socket, CONST.CODE_500, CONST.CODE_500_MESSAGE);
-        log('ERROR', 'Error saving image' + err);
+        log('ERROR', 'Error saving image: ' + err);
         return;
       }
       writePacket(socket, CONST.CODE_201, CONST.CODE_201_MESSAGE, 'text/plain', `Image saved as ${filename}`);
@@ -340,7 +326,40 @@ for (let iface in networkInterfaces) {
   }
 }
 
-const port = process.argv[2] || 3008;
-server.listen(port, () => {
-  log('INFO', `HiperServer running on http://${ip}:${port}`);
-});
+const port = 3008;
+const checkPortInUse = (port) => {
+  return new Promise((resolve, reject) => {
+    const tester = net.createServer()
+      .once('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+          resolve(true);
+        } else {
+          reject(err);
+        }
+      })
+      .once('listening', () => {
+        tester.once('close', () => {
+          resolve(false);
+        }).close();
+      })
+      .listen(port);
+  });
+};
+
+  checkPortInUse(port)
+    .then((inUse) => {
+      if (!inUse) {
+        server.listen(port, () => {
+          log('INFO', `HiperServer running on http://${ip}:${port}`);
+        });
+      } else {
+        log('ERROR', `Port ${port} is already in use`);
+      }
+    })
+    .catch((err) => {
+      log('ERROR', `Error checking port: ${err.message}`);
+    });
+  
+
+
+module.exports = server;

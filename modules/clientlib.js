@@ -40,7 +40,7 @@ function sendRequest(url, method, headers, body) {
 
     const client = net.createConnection(options, () => {
       console.log('Connected to server');
-      let requestData = `${method} ${urlObj.pathname} HTTP/1.1\r\n`;
+      let requestData = `${method} ${urlObj.pathname}${urlObj.search} HTTP/1.1\r\n`;
 
       // Add automatic headers
       const defaultHeaders = {
@@ -94,7 +94,8 @@ function sendRequest(url, method, headers, body) {
         statusCode,
         statusMessage,
         headers: responseHeaders,
-        body: responseData
+        body: responseData,
+        method: method
       };
       handleResponse(response);
       resolve(response);
@@ -113,9 +114,15 @@ function sendRequest(url, method, headers, body) {
 function handleResponse(response) {
   console.log("Response:\n", response);
   if (response.statusCode === 200) {
-    fs.writeFileSync(cacheFile, response.body);
-    console.log('Resources saved to cache.');
-    console.log('Cached resources:', JSON.parse(response.body));
+    //if is a GET request and the status code is 200
+    if (response.method === 'GET') {
+      fs.writeFileSync(cacheFile, response.body);
+      console.log('Resources saved to cache.');
+      console.log('Cached resources:', JSON.parse(response.body));
+    }
+    else {
+      console.log('200 OK.');
+    }
   } else if (response.statusCode === 201) {
     console.log('Resource created successfully.');
   } else if (response.statusCode === 204) {
