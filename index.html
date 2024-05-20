@@ -1,65 +1,67 @@
-<html>
-  <head>
-    <title>SendRequests</title>
-	  <link rel="icon" type="image/png" href="https://i.imgur.com/ETjZmTf.png">
-	  <style>
-		  body { text-align: center; padding: 150px; }
-		  h1 { font-size: 50px; }
-		  body { font: 20px Helvetica, sans-serif; color: #333; }
-		  article { display: block; text-align: left; width: 650px; margin: 0 auto; }
-		  a { color: #ffffff; text-decoration: none; }
-		  a:hover { color: #333; text-decoration: none; }
-	 </style>
-	 <meta charset="UTF-8">
-	 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-	 <link rel="stylesheet" href="style.css"> <!-- Enlace a tu archivo CSS -->
-  </head>
-  <body>
-    <header>
-      <h1> Send HTTP Request</h1>
-    </header>
-    
-    <div class="container">
-      <div class="form-container">
-          <form id="requestForm">
-              <div class="form-outline mb-4 w-50 m-auto">
-                  <label for="url">URL:</label>
-                  <input type="text" id="url" name="url" required>
-              </div>
-              <div class="form-outline mb-4 w-50 m-auto">
-                  <label for="method">Method:</label>
-                  <select id="method" name="method">
-                      <option value="GET">GET</option>
-                      <option value="POST">POST</option>
-                      <option value="PUT">PUT</option>
-                      <option value="DELETE">DELETE</option>
-                  </select>
-              </div>
-              <div class="form-outline mb-4 w-50 m-auto">
-                  <label for="headers">Headers (key/value):</label>
-                  <textarea id="headers" name="headers"></textarea>
-              </div>
-              <div class="form-outline mb-4 w-50 m-auto">
-                  <label for="body">Body:</label>
-                  <textarea id="body" name="body"></textarea>
-              </div>
-              <div class="form-outline mb-4 w-50 m-auto">
-                  <button type="submit">Send Request</button>
-              </div>
-          </form>
-      </div>
-      <div class="response-container">
-          <h2>Response:</h2>
-          <pre id="response"></pre>
-      </div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SendRequests</title>
+  <link rel="icon" type="image/png" href="https://i.imgur.com/ETjZmTf.png">
+  <style>
+    body { text-align: center; padding: 150px; }
+    h1 { font-size: 50px; }
+    body { font: 20px Helvetica, sans-serif; color: #333; }
+    article { display: block; text-align: left; width: 650px; margin: 0 auto; }
+    a { color: #ffffff; text-decoration: none; }
+    a:hover { color: #333; text-decoration: none; }
+    .container { width: 80%; margin: 0 auto; }
+    .form-container, .response-container { margin: 20px 0; }
+    .form-outline { margin-bottom: 15px; }
+    input, select, textarea, button { width: 100%; padding: 10px; margin: 5px 0; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1> Send HTTP Request</h1>
+  </header>
+  
+  <div class="container">
+    <div class="form-container">
+      <form id="requestForm">
+        <div class="form-outline mb-4 w-50 m-auto">
+          <label for="url">URL:</label>
+          <input type="text" id="url" name="url" required>
+        </div>
+        <div class="form-outline mb-4 w-50 m-auto">
+          <label for="method">Method:</label>
+          <select id="method" name="method">
+            <option value="GET">GET</option>
+            <option value="POST">POST</option>
+            <option value="PUT">PUT</option>
+            <option value="DELETE">DELETE</option>
+          </select>
+        </div>
+        <div class="form-outline mb-4 w-50 m-auto">
+          <label for="headers">Headers (key/value):</label>
+          <textarea id="headers" name="headers"></textarea>
+        </div>
+        <div class="form-outline mb-4 w-50 m-auto">
+          <label for="body">Body:</label>
+          <textarea id="body" name="body"></textarea>
+        </div>
+        <div class="form-outline mb-4 w-50 m-auto">
+          <button type="submit">Send Request</button>
+        </div>
+      </form>
     </div>
+    <div class="response-container">
+      <h2>Response:</h2>
+      <pre id="response"></pre>
+    </div>
+  </div>
 
-    <footer>
-      <div>
-        <a class="nav-link active text-white" aria-current="page" href="#">&copy; 2024 Hipers. Todos los derechos reservados.</a>
-      </div>
-    </footer>
-    <script src="client.js"></script>
+  <footer>
+    <div>
+      <a class="nav-link active text-white" aria-current="page" href="#">&copy; 2024 Hipers. Todos los derechos reservados.</a>
+    </div>
+  </footer>
 </body>
-
 </html>
