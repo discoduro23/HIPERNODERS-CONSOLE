@@ -1,0 +1,46 @@
+name: Node.js CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '14'
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Ensure data directories exist
+      run: |
+        mkdir -p data
+        mkdir -p data/backup
+        mkdir -p images
+
+    - name: Verify JSON files exist
+      run: |
+        if [ ! -f data/resources.json ]; then
+          echo '[]' > data/resources.json
+        fi
+        if [ ! -f data/usersdb.json ]; then
+          echo '[]' > data/usersdb.json
+        fi
+
+    - name: Set up environment variables
+      run: echo "API_KEY=hiperKEY_24" > .env
+
+    - name: Run tests
+      run: npm test
