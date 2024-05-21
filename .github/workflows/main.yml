@@ -14,12 +14,12 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3 # Updated to the latest version
 
     - name: Set up Node.js
-      uses: actions/setup-node@v2
+      uses: actions/setup-node@v5 # Updated to the latest version
       with:
-        node-version: '18'
+        node-version: '20' # Updated to Node.js 20
 
     - name: Install dependencies
       run: npm install
@@ -29,7 +29,7 @@ jobs:
         mkdir -p data
         mkdir -p data/backup
         mkdir -p images
-        mkdir -p test  # Asegurarse de que la carpeta test existe
+        mkdir -p test  
 
     - name: Verify JSON files exist
       run: |
@@ -44,18 +44,10 @@ jobs:
       run: echo "API_KEY=hiperKEY_24" > .env
 
     - name: Run tests and generate log in the test folder
-      run: npm test
+      run: npm test -- --json --outputFile=test/test-results.json
 
     - name: Upload test log from test folder
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4 # Updated to the latest version
       with:
         name: test-results
         path: test/test-results.json
-
-    - name: Commit and push test results
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        git add test/test-results.json
-        git commit -m "Add test results"
-        git push
