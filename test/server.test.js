@@ -6,6 +6,7 @@ const server = require('../server.js');
 const BASE_URL = 'http://localhost:3008'; // Cambia esto por la URL de tu servidor
 
 const dataDir = path.join(__dirname, '../data');
+const imagesDir = path.join(__dirname, '../images');
 const backupDir = path.join(__dirname, '../data/backup');
 
 // Función para crear una copia de seguridad de los archivos JSON
@@ -36,6 +37,10 @@ beforeAll((done) => {
 
 // Restaurar los archivos originales después de los tests
 afterAll((done) => {
+  //erase test image if exists
+  if (fs.existsSync(path.join(imagesDir, 'test.png'))) {
+    fs.unlinkSync(path.join(imagesDir, 'test.png'));
+  }
   restoreJsonFiles();
   server.stop(done); // Ensure the server is stopped after tests
 });
