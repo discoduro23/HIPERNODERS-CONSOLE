@@ -53,7 +53,6 @@ async function manualRequest(callback) {
 
   try {
     const response = await sendRequest(url, method, headers, body);
-    console.log(response);
   } catch (err) {
     console.error('Error:', err);
   }
@@ -67,7 +66,6 @@ async function handleRequest(callback) {
   const headers = { ...defaultHeaders, ...cacheHeaders};
   try {
     const response = await sendRequest('http://176.31.196.25:3008/resources', 'GET', headers, null);
-    console.log(response);
   } catch (err) {
     console.error('Error:', err);
   }

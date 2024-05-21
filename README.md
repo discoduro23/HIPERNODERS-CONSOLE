@@ -34,11 +34,11 @@ To evaluate this project you shoud install node (tested w/ v18) and its packages
 - [x] 🔑 Authentication with API key
 - [ ] 🔐 Authentication with login flow
 - [x] 📸 Sending and receiving multimedia files
-- [DOING] ☢️ TLS
+- [x] ☢️ TLS
 - [x] 📓 Logging
 - [x] 🧪 Automated Testing ('npm test')
 - [x] ☁️ Deployment on a real server
-- [ ] ⚙️ Refactor with HTTP framework
+- [x] ⚙️ Refactor with HTTP framework
 - [x] 💾 Conditional GET with cache
 - [DOING] 🎨 GUI for the client
 - [ ] 🍪 Cookies

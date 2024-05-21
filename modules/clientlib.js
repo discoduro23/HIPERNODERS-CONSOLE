@@ -112,7 +112,7 @@ function sendRequest(url, method, headers, body) {
 
 // Function to handle the response based on status code
 function handleResponse(response) {
-  console.log("Response:\n", response);
+  console.log("Response:\n", response, "\n");
   if (response.statusCode === 200) {
     //if is a GET request and the status code is 200
     if (response.method === 'GET') {
