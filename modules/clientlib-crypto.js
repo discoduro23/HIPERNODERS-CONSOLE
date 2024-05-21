@@ -12,6 +12,7 @@ const options = {
 
 let dh;
 let secret;
+
 function getCache() {
   if (fs.existsSync(cacheFile)) {
     const cacheData = fs.readFileSync(cacheFile);
@@ -112,40 +113,56 @@ function sendRequest(url, method, headers, body) {
         requestData += JSON.stringify(body);
       }
 
-      client.write(encryptData(requestData, secret) );
+      client.write(encryptData(requestData, secret));
     });
 
-    let responseData = '';
+    let encryptedResponseData = '';
     let statusCode = null;
     let statusMessage = null;
     let responseHeaders = {};
 
     client.on('data', (chunk) => {
-      responseData += chunk.toString();
+      encryptedResponseData += chunk.toString();
+    });
+
+    client.on('end', () => {
+      console.log("Mensaje del servidor recibido (cifrado):", encryptedResponseData);
+
+      // Asumir que solo la última parte es el mensaje cifrado
+      const jsonPartEnd = encryptedResponseData.indexOf('}') + 1;
+      const encryptedMessage = encryptedResponseData.slice(jsonPartEnd);
+
+      const responseData = decryptData(encryptedMessage, secret);
+      console.log("Mensaje descifrado:", responseData);
+
+      if (!responseData) {
+        reject(new Error('Failed to decrypt response'));
+        return;
+      }
       const endOfHeaders = responseData.indexOf('\r\n\r\n');
       if (endOfHeaders !== -1) {
         const headersRaw = responseData.substring(0, endOfHeaders).split('\r\n');
-        headersRaw.shift(); // Remove HTTP status line
+        const statusLine = headersRaw.shift(); // Remove HTTP status line
         headersRaw.forEach(header => {
           const [key, value] = header.split(': ');
           responseHeaders[key] = value;
         });
-        const statusLine = responseData.substring(0, endOfHeaders).split('\r\n')[0].split(' ');
-        statusCode = parseInt(statusLine[1]);
-        statusMessage = statusLine.slice(2).join(' ');
-        responseData = responseData.substring(endOfHeaders + 4);
-      }
-    });
+        const statusLineParts = statusLine.split(' ');
+        statusCode = parseInt(statusLineParts[1]);
+        statusMessage = statusLineParts.slice(2).join(' ');
+        const responseBody = responseData.substring(endOfHeaders + 4);
 
-    client.on('end', () => {
-      const response = {
-        statusCode,
-        statusMessage,
-        headers: responseHeaders,
-        body: responseData
-      };
-      handleResponse(response);
-      resolve(response);
+        const response = {
+          statusCode,
+          statusMessage,
+          headers: responseHeaders,
+          body: responseBody
+        };
+        handleResponse(response);
+        resolve(response);
+      } else {
+        reject(new Error('Response format invalid'));
+      }
       client.destroy();
     });
 
@@ -171,10 +188,10 @@ function encryptData(plaintext, secret) {
 function decryptData(encrypted, secret) {
   try {
     const iv = Buffer.from(encrypted.slice(0, 32), 'hex');
-    encrypted = encrypted.slice(32);
+    const encryptedData = encrypted.slice(32);
     const key = crypto.createHash('sha256').update(secret).digest().slice(0, 32);
     const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
-    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+    let decrypted = decipher.update(encryptedData, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
     return decrypted;
   } catch (err) {
@@ -182,16 +199,15 @@ function decryptData(encrypted, secret) {
     return null;
   }
 }
+
 function handleResponse(response) {
   console.log("Response:\n", response);
   if (response.statusCode === 200) {
-    //if is a GET request and the status code is 200
     if (response.method === 'GET') {
       fs.writeFileSync(cacheFile, response.body);
       console.log('Resources saved to cache.');
       console.log('Cached resources:', JSON.parse(response.body));
-    }
-    else {
+    } else {
       console.log('200 OK.');
     }
   } else if (response.statusCode === 201) {

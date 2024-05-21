@@ -21,7 +21,6 @@ if (!fs.existsSync(imagesDir)) {
 const logStream = fs.createWriteStream('server.log', { flags: 'a' });
 const API_KEY = dotenv.parsed.API_KEY;
 
-
 let resources = [];
 let userdb = [];
 let lastResourceId = 0;
@@ -82,9 +81,29 @@ function writePacket(socket, statusCode, statusMessage, contentType, body, heade
   });
 }
 
+function writeSecurePacket(socket, secret, statusCode, statusMessage, contentType, body, headers) {
+  let response = `HTTP/1.1 ${statusCode} ${statusMessage}\r\n`;
+  if (contentType) {
+    response += `Content-Type: ${contentType}\r\n`;
+  }
+  if (headers) {
+    for (let key in headers) {
+      response += `${key}: ${headers[key]}\r\n`;
+    }
+  }
+  response += '\r\n';
+  if (body) {
+    response += body;
+  }
+  
+  const encryptedResponse = encryptData(response, secret);
+  socket.write(encryptedResponse, () => {
+    socket.end();
+  });
+}
+
 let secret;
 let apikeyLine = '';
-var path = '';
 const server = net.createServer((socket) => {
   log('INFO', '[CLIENT START]');
 
@@ -100,26 +119,20 @@ const server = net.createServer((socket) => {
     let message;
     try {
       if (!secret) {
-        // RECIBIR CLAVE PUBLICA DEL CLIENTE
         message = JSON.parse(data.toString());
       } else {
-        // DESENCRIPTAR MENSAJE
         const encryptedMessage = data.toString();
         const decryptedMessage = decryptData(encryptedMessage, secret);
-        console.log('Mensaje descifrado del cliente:', decryptedMessage);
-    
-        // Procesar el mensaje HTTP descifrado
+        //console.log('Mensaje descifrado del cliente:', decryptedMessage);
+
         const requestLines = decryptedMessage.split('\r\n');
         console.log('\nMensaje HTTP descifrado del cliente:', requestLines);
-        const requestLine = requestLines[0].split(' '); // La primera línea es la línea de solicitud HTTP
+        const requestLine = requestLines[0].split(' ');
         console.log('\nLínea de solicitud HTTP:', requestLine);
-        const method = requestLine[0]; // Método HTTP (GET, POST, etc.)
-        console.log('\nMétodo HTTP:', method);
-        path = requestLine[1]; // Ruta solicitada
-        console.log('\nRuta solicitada:', path);
+        const method = requestLine[0];
+        route = requestLine[1];
+        console.log('\nRuta solicitada:', route);
 
-        // Buscar la línea de la clave de la API
-        
         for (let i = 1; i < requestLines.length; i++) {
           if (requestLines[i].startsWith('x-api-key:')) {
             apikeyLine = requestLines[i];
@@ -127,25 +140,22 @@ const server = net.createServer((socket) => {
           }
         }
         console.log('\nAPI Key Line:', apikeyLine);
-    
-        // Crear un objeto `message` con la estructura esperada
+
         message = {
-          type: 'secure-message',  // Cambia a 'secure-message'
+          type: 'secure-message',
           method: method,
-          path: path,
+          route: route,
           headers: {},
           body: ''
         };
-    
-        // Procesar encabezados
+
         let i = 1;
         for (; i < requestLines.length; i++) {
-          if (requestLines[i] === '') break; // Fin de los encabezados
+          if (requestLines[i] === '') break;
           const [headerKey, headerValue] = requestLines[i].split(': ');
           message.headers[headerKey.toLowerCase()] = headerValue;
         }
-    
-        // Procesar el cuerpo (si existe)
+
         message.body = requestLines.slice(i + 1).join('\r\n');
       }
     } catch (error) {
@@ -158,7 +168,7 @@ const server = net.createServer((socket) => {
           const clientPublicKey = Buffer.from(message.publicKey, 'hex');
           secret = dh.computeSecret(clientPublicKey);
           console.log('\nSecreto compartido establecido:', secret.toString('hex'));
-    
+
           socket.write(JSON.stringify({ type: 'key-exchange-complete' }));
         } catch (error) {
           console.error('\nError al establecer el secreto compartido:', error);
@@ -166,13 +176,13 @@ const server = net.createServer((socket) => {
           socket.end();
         }
         break;
-      case 'secure-message':  // Asegúrate de que este tipo se maneja aquí
+      case 'secure-message':
         console.log('\nConversación segura iniciada\n');
         try {
           if (!secret) {
             throw new Error('Secreto compartido no establecido.');
           }
-          processRequest(socket, message);
+          processRequest(socket, message, secret);
         } catch (error) {
           console.error('\nError al procesar mensaje:', error);
           socket.write(JSON.stringify({ type: 'error', message: 'Failed to process message' }));
@@ -189,61 +199,45 @@ const server = net.createServer((socket) => {
   });
 });
 
-function processRequest(socket, requestData) {
-  const requestString = requestData.toString();
-  const lines = requestString.split('\r\n');
-  const requestLine = lines[0] ? lines[0].split(' ') : [];
-
-  if (requestLine.length < 2) {
-    writePacket(socket, CONST.CODE_400, CONST.CODE_400_MESSAGE);
-    log('ERROR', 'Invalid request line');
-    return;
-  }
-  //console.log("path: "+path);
-  const method = requestLine[0];
-  const [path, queryParams] = requestLine[1].split('?');
-  const params = new URLSearchParams(queryParams || '');
-  console.log("path: "+path);
+function processRequest(socket, requestData, secret) {
+  const method = requestData.method;
+  const route = requestData.route;
+  const params = new URLSearchParams(route.split('?')[1] || '');
+  console.log("path: " + route);
 
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE',
     'Access-Control-Allow-Headers': 'Content-Type, X-API-Key'
   };
-  for (let i = 1; i < lines.length; i++) {
-    const [key, value] = lines[i].split(': ');
-    headers[key.toLowerCase()] = value;
-  }
-  if (apikeyLine !== "x-api-key: "+API_KEY) {
-    console.log("apikey: "+ apikeyLine);
 
-    writePacket(socket, CONST.CODE_403, CONST.CODE_403_MESSAGE);
+  for (let key in requestData.headers) {
+    headers[key.toLowerCase()] = requestData.headers[key];
+  }
+
+  if (apikeyLine !== `x-api-key: ${API_KEY}`) {
+    console.log("apikey: " + apikeyLine);
+    writeSecurePacket(socket, secret, CONST.CODE_403, CONST.CODE_403_MESSAGE, 'text/plain', 'Invalid API key');
     log('ERROR', 'Invalid API key');
     return;
   }
 
-  if (method === 'GET' && path === '/resources') {
+  if (method === 'GET' && route === '/resources') {
     const ifModifiedSince = headers['if-modified-since'];
     const lastModified = resources[0].lastModified;
 
     if (ifModifiedSince && new Date(ifModifiedSince) >= new Date(lastModified)) {
-      writePacket(socket, CONST.CODE_304, CONST.CODE_304_MESSAGE);
+      writeSecurePacket(socket, secret, CONST.CODE_304, CONST.CODE_304_MESSAGE);
       log('INFO', 'Resources not modified since last request');
     } else {
-      writePacket(socket, CONST.CODE_200, CONST.CODE_200_MESSAGE, 'application/json', JSON.stringify(resources));
+      writeSecurePacket(socket, secret, CONST.CODE_200, CONST.CODE_200_MESSAGE, 'application/json', JSON.stringify(resources));
       log('INFO', 'Resources sent');
     }
-  } else if (method === 'POST' && path === '/resources') {
-    let body = '';
-    for (let i = 0; i < lines.length; i++) {
-      if (lines[i] === '') {
-        body = lines.slice(i + 1).join('\r\n');
-        break;
-      }
-    }
+  } else if (method === 'POST' && route === '/resources') {
+    let body = requestData.body;
 
     if (body === '') {
-      writePacket(socket, CONST.CODE_400, CONST.CODE_400_MESSAGE);
+      writeSecurePacket(socket, secret, CONST.CODE_400, CONST.CODE_400_MESSAGE);
       log('ERROR', 'Empty body');
       return;
     }
@@ -258,45 +252,37 @@ function processRequest(socket, requestData) {
     resources.push(resource);
     saveResources();
 
-    writePacket(socket, CONST.CODE_201, CONST.CODE_201_MESSAGE, 'text/plain', `Resource added successfully with ID ${newResourceId}`);
+    writeSecurePacket(socket, secret, CONST.CODE_201, CONST.CODE_201_MESSAGE, 'text/plain', `Resource added successfully with ID ${newResourceId}`);
     log('INFO', `Resource added with ID ${newResourceId}`);
-  } else if (method === 'PUT' && path === '/resources') {
+  } else if (method === 'PUT' && route === '/resources') {
     const resourceId = parseInt(params.get('id'));
     const resourceIndex = resources.findIndex(resource => resource.id === resourceId);
     if (resourceIndex !== -1) {
-      let body = '';
-      for (let i = 0; i < lines.length; i++) {
-        if (lines[i] === '') {
-          body = lines.slice(i + 1).join('\r\n');
-          break;
-        }
-      }
-
+      let body = requestData.body;
       const resourceContent = JSON.parse(body);
 
       resources[resourceIndex].nombre = resourceContent.nombre ?? resources[resourceIndex].nombre;
       resources[resourceIndex].provincias = resourceContent.provincias ?? resources[resourceIndex].provincias;
       saveResources();
-      writePacket(socket, CONST.CODE_200, CONST.CODE_200_MESSAGE, 'text/plain', 'Resource updated successfully');
+      writeSecurePacket(socket, secret, CONST.CODE_200, CONST.CODE_200_MESSAGE, 'text/plain', 'Resource updated successfully');
       log('INFO', `Resource updated with ID ${resourceId}`);
     } else {
-      writePacket(socket, CONST.CODE_404, CONST.CODE_404_MESSAGE);
-      
+      writeSecurePacket(socket, secret, CONST.CODE_404, CONST.CODE_404_MESSAGE);
       log('ERROR', `Resource not found with ID ${resourceId}`);
     }
-  } else if (method === 'DELETE' && path === '/resources') {
+  } else if (method === 'DELETE' && route === '/resources') {
     const resourceId = parseInt(params.get('id'));
     const resourceIndex = resources.findIndex(resource => resource.id === resourceId);
     if (resourceIndex !== -1) {
       resources.splice(resourceIndex, 1);
       saveResources();
-      writePacket(socket, CONST.CODE_200, CONST.CODE_200_MESSAGE, 'text/plain', 'Resource deleted successfully');
+      writeSecurePacket(socket, secret, CONST.CODE_200, CONST.CODE_200_MESSAGE, 'text/plain', 'Resource deleted successfully');
       log('INFO', `Resource deleted with ID ${resourceId}`);
     } else {
-      writePacket(socket, CONST.CODE_404, CONST.CODE_404_MESSAGE);
+      writeSecurePacket(socket, secret, CONST.CODE_404, CONST.CODE_404_MESSAGE);
       log('ERROR', `Resource not found with ID ${resourceId}`);
     }
-  } else if (method === 'POST' && path === '/images') {
+  } else if (method === 'POST' && route === '/images') {
     const boundary = headers['content-type'].split('boundary=')[1];
 
     const splitBuffer = (buffer, separator) => {
@@ -311,11 +297,11 @@ function processRequest(socket, requestData) {
       return parts;
     };
 
-    const parts = splitBuffer(requestData, Buffer.from(`--${boundary}`)).filter(part => part.length > 0 && part.toString().trim() !== '--');
+    const parts = splitBuffer(requestData.body, Buffer.from(`--${boundary}`)).filter(part => part.length > 0 && part.toString().trim() !== '--');
 
     const filePart = parts.find(part => part.includes('filename='));
     if (!filePart) {
-      writePacket(socket, CONST.CODE_400, CONST.CODE_400_MESSAGE, 'text/plain', 'No file uploaded');
+      writeSecurePacket(socket, secret, CONST.CODE_400, CONST.CODE_400_MESSAGE, 'text/plain', 'No file uploaded');
       log('ERROR', 'No file uploaded');
       return;
     }
@@ -324,7 +310,7 @@ function processRequest(socket, requestData) {
     const contentTypeMatch = filePart.toString().match(/Content-Type: (.+)/);
 
     if (!contentDispositionMatch || !contentTypeMatch) {
-      writePacket(socket, CONST.CODE_400, CONST.CODE_400_MESSAGE, 'text/plain', 'Invalid file upload');
+      writeSecurePacket(socket, secret, CONST.CODE_400, CONST.CODE_400_MESSAGE, 'text/plain', 'Invalid file upload');
       log('ERROR', 'Invalid file upload');
       return;
     }
@@ -347,7 +333,7 @@ function processRequest(socket, requestData) {
     }
 
     if (typeofimage === '') {
-      writePacket(socket, CONST.CODE_405, CONST.CODE_405_MESSAGE, 'text/plain', 'Invalid file type');
+      writeSecurePacket(socket, secret, CONST.CODE_405, CONST.CODE_405_MESSAGE, 'text/plain', 'Invalid file type');
       log('ERROR', 'Invalid file type');
       return;
     }
@@ -360,29 +346,29 @@ function processRequest(socket, requestData) {
 
     fs.writeFile(filePath, fileData, err => {
       if (err) {
-        writePacket(socket, CONST.CODE_500, CONST.CODE_500_MESSAGE);
+        writeSecurePacket(socket, secret, CONST.CODE_500, CONST.CODE_500_MESSAGE);
         log('ERROR', 'Error saving image' + err);
         return;
       }
-      writePacket(socket, CONST.CODE_201, CONST.CODE_201_MESSAGE, 'text/plain', `Image saved as ${filename}`);
+      writeSecurePacket(socket, secret, CONST.CODE_201, CONST.CODE_201_MESSAGE, 'text/plain', `Image saved as ${filename}`);
       log('INFO', `Image saved: ${filename}`);
     });
-  } else if (method === 'GET' && path.startsWith('/images')) {
-    const filename = path.split('/images/')[1];
+  } else if (method === 'GET' && route.startsWith('/images')) {
+    const filename = route.split('/images/')[1];
     const filePath = imagesDir + filename;
 
     fs.readFile(filePath, (err, data) => {
       if (err) {
-        writePacket(socket, CONST.CODE_404, CONST.CODE_404_MESSAGE);
+        writeSecurePacket(socket, secret, CONST.CODE_404, CONST.CODE_404_MESSAGE);
         log('ERROR', 'Image not found');
         return;
       }
-      writePacket(socket, CONST.CODE_200, CONST.CODE_200_MESSAGE, 'image/png', data);
+      writeSecurePacket(socket, secret, CONST.CODE_200, CONST.CODE_200_MESSAGE, 'image/png', data);
       log('INFO', `Image sent: ${filename}`);
     });
   } else {
-    writePacket(socket, CONST.CODE_404, CONST.CODE_404_MESSAGE);
-    log('ERROR', `Unknown endpoint: ${path}`);
+    writeSecurePacket(socket, secret, CONST.CODE_404, CONST.CODE_404_MESSAGE);
+    log('ERROR', `Unknown endpoint: ${route}`);
   }
 }
 
@@ -398,11 +384,13 @@ for (let iface in networkInterfaces) {
 
 function encryptData(plaintext, secret) {
   const iv = crypto.randomBytes(16);
+  console.log("Mensaje a cifrar: ", plaintext);
   console.log("Generated IV (encrypt):", iv.toString('hex'));
   const key = crypto.createHash('sha256').update(secret).digest().slice(0, 32);
   const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
   let encrypted = cipher.update(plaintext, 'utf8', 'hex');
   encrypted += cipher.final('hex');
+  console.log("Mensaje cifrado: ", encrypted);
   return iv.toString('hex') + encrypted;
 }
 
