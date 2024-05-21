@@ -21,6 +21,7 @@ if (!fs.existsSync(imagesDir)) {
 const logStream = fs.createWriteStream('server.log', { flags: 'a' });
 const API_KEY = dotenv.parsed.API_KEY;
 
+
 let resources = [];
 let userdb = [];
 let lastResourceId = 0;
@@ -82,6 +83,8 @@ function writePacket(socket, statusCode, statusMessage, contentType, body, heade
 }
 
 let secret;
+let apikeyLine = '';
+var path = '';
 const server = net.createServer((socket) => {
   log('INFO', '[CLIENT START]');
 
@@ -96,19 +99,66 @@ const server = net.createServer((socket) => {
   socket.on('data', (data) => {
     let message;
     try {
-      message = JSON.parse(data.toString());
+      if (!secret) {
+        // RECIBIR CLAVE PUBLICA DEL CLIENTE
+        message = JSON.parse(data.toString());
+      } else {
+        // DESENCRIPTAR MENSAJE
+        const encryptedMessage = data.toString();
+        const decryptedMessage = decryptData(encryptedMessage, secret);
+        console.log('Mensaje descifrado del cliente:', decryptedMessage);
+    
+        // Procesar el mensaje HTTP descifrado
+        const requestLines = decryptedMessage.split('\r\n');
+        console.log('\nMensaje HTTP descifrado del cliente:', requestLines);
+        const requestLine = requestLines[0].split(' '); // La primera línea es la línea de solicitud HTTP
+        console.log('\nLínea de solicitud HTTP:', requestLine);
+        const method = requestLine[0]; // Método HTTP (GET, POST, etc.)
+        console.log('\nMétodo HTTP:', method);
+        path = requestLine[1]; // Ruta solicitada
+        console.log('\nRuta solicitada:', path);
+
+        // Buscar la línea de la clave de la API
+        
+        for (let i = 1; i < requestLines.length; i++) {
+          if (requestLines[i].startsWith('x-api-key:')) {
+            apikeyLine = requestLines[i];
+            break;
+          }
+        }
+        console.log('\nAPI Key Line:', apikeyLine);
+    
+        // Crear un objeto `message` con la estructura esperada
+        message = {
+          type: 'secure-message',  // Cambia a 'secure-message'
+          method: method,
+          path: path,
+          headers: {},
+          body: ''
+        };
+    
+        // Procesar encabezados
+        let i = 1;
+        for (; i < requestLines.length; i++) {
+          if (requestLines[i] === '') break; // Fin de los encabezados
+          const [headerKey, headerValue] = requestLines[i].split(': ');
+          message.headers[headerKey.toLowerCase()] = headerValue;
+        }
+    
+        // Procesar el cuerpo (si existe)
+        message.body = requestLines.slice(i + 1).join('\r\n');
+      }
     } catch (error) {
-      console.error('Error al parsear el mensaje:', error);
+      console.error('Error al procesar el mensaje:', error);
       return;
     }
-
     switch (message.type) {
       case 'client-key':
         try {
           const clientPublicKey = Buffer.from(message.publicKey, 'hex');
           secret = dh.computeSecret(clientPublicKey);
           console.log('\nSecreto compartido establecido:', secret.toString('hex'));
-
+    
           socket.write(JSON.stringify({ type: 'key-exchange-complete' }));
         } catch (error) {
           console.error('\nError al establecer el secreto compartido:', error);
@@ -116,18 +166,16 @@ const server = net.createServer((socket) => {
           socket.end();
         }
         break;
-      case 'secure-message':
+      case 'secure-message':  // Asegúrate de que este tipo se maneja aquí
         console.log('\nConversación segura iniciada\n');
         try {
           if (!secret) {
             throw new Error('Secreto compartido no establecido.');
           }
-          const decryptedMessage = decryptData(message.data, secret);
-          console.log('\nMensaje descifrado del cliente:', decryptedMessage);
-          processRequest(socket, decryptedMessage);
+          processRequest(socket, message);
         } catch (error) {
-          console.error('\nError al descifrar mensaje:', error);
-          socket.write(JSON.stringify({ type: 'error', message: 'Failed to decrypt message' }));
+          console.error('\nError al procesar mensaje:', error);
+          socket.write(JSON.stringify({ type: 'error', message: 'Failed to process message' }));
         }
         break;
       default:
@@ -151,10 +199,11 @@ function processRequest(socket, requestData) {
     log('ERROR', 'Invalid request line');
     return;
   }
-
+  //console.log("path: "+path);
   const method = requestLine[0];
   const [path, queryParams] = requestLine[1].split('?');
   const params = new URLSearchParams(queryParams || '');
+  console.log("path: "+path);
 
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -165,7 +214,9 @@ function processRequest(socket, requestData) {
     const [key, value] = lines[i].split(': ');
     headers[key.toLowerCase()] = value;
   }
-  if (headers['x-api-key'] !== API_KEY) {
+  if (apikeyLine !== "x-api-key: "+API_KEY) {
+    console.log("apikey: "+ apikeyLine);
+
     writePacket(socket, CONST.CODE_403, CONST.CODE_403_MESSAGE);
     log('ERROR', 'Invalid API key');
     return;
@@ -230,6 +281,7 @@ function processRequest(socket, requestData) {
       log('INFO', `Resource updated with ID ${resourceId}`);
     } else {
       writePacket(socket, CONST.CODE_404, CONST.CODE_404_MESSAGE);
+      
       log('ERROR', `Resource not found with ID ${resourceId}`);
     }
   } else if (method === 'DELETE' && path === '/resources') {

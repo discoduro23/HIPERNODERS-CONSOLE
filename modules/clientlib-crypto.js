@@ -162,7 +162,7 @@ function encryptData(plaintext, secret) {
   console.log("Generated IV (encrypt):", iv.toString('hex'));
   const key = crypto.createHash('sha256').update(secret).digest().slice(0, 32);
   const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
-  //console.log("plaintext: ", plaintext);
+  console.log("plaintext: ", plaintext);
   let encrypted = cipher.update(plaintext, 'utf8', 'hex');
   encrypted += cipher.final('hex');
   return iv.toString('hex') + encrypted;
@@ -180,6 +180,38 @@ function decryptData(encrypted, secret) {
   } catch (err) {
     console.error("Decryption failed:", err);
     return null;
+  }
+}
+function handleResponse(response) {
+  console.log("Response:\n", response);
+  if (response.statusCode === 200) {
+    //if is a GET request and the status code is 200
+    if (response.method === 'GET') {
+      fs.writeFileSync(cacheFile, response.body);
+      console.log('Resources saved to cache.');
+      console.log('Cached resources:', JSON.parse(response.body));
+    }
+    else {
+      console.log('200 OK.');
+    }
+  } else if (response.statusCode === 201) {
+    console.log('Resource created successfully.');
+  } else if (response.statusCode === 204) {
+    console.log('Resource updated successfully.');
+  } else if (response.statusCode === 304) {
+    const cachedResources = getCache();
+    console.log('Resources are up-to-date.');
+    console.log('Cached resources:', cachedResources);
+  } else if (response.statusCode === 400) {
+    console.log('Bad request:', response.statusMessage);
+  } else if (response.statusCode === 401) {
+    console.log('Unauthorized:', response.statusMessage);
+  } else if (response.statusCode === 403) {
+    console.log('Forbidden:', response.statusMessage);
+  } else if (response.statusCode === 404) {
+    console.log('Resource not found:', response.statusMessage);
+  } else {
+    console.log('Unexpected status:', response.statusCode, response.statusMessage);
   }
 }
 
