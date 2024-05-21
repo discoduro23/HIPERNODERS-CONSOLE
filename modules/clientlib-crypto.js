@@ -7,7 +7,8 @@ const defaultHeaders = {
 };
 const options = {
   port: 3008,
-  host: '176.31.196.25'
+  //host: '176.31.196.25'
+  host: '172.20.10.4'
 };
 
 let dh;
@@ -36,7 +37,7 @@ function setCacheHeaders(cachedResources) {
 function establishSharedSecret() {
   return new Promise((resolve, reject) => {
     const client = net.createConnection(options, () => {
-      console.log('Conectado al servidor');
+      console.log('\nConectado al servidor\n');
     });
 
     client.on('data', (data) => {
@@ -57,7 +58,7 @@ function establishSharedSecret() {
           break;
 
         case 'key-exchange-complete':
-          console.log('Intercambio de claves completado con éxito');
+          console.log('\nIntercambio de claves completado con éxito\n');
           resolve(secret);
           break;
 
@@ -88,7 +89,7 @@ function sendRequest(url, method, headers, body) {
     };
 
     const client = net.createConnection(options, () => {
-      console.log('Connected to server');
+      //console.log('Connected to server');
       let requestData = `${method} ${urlObj.pathname} HTTP/1.1\r\n`;
 
       // Add automatic headers
@@ -126,6 +127,7 @@ function sendRequest(url, method, headers, body) {
     });
 
     client.on('end', () => {
+      console.log('\x1b[34m%s\x1b[0m', 'Nuevo mensaje del servidor\n');
       console.log("Mensaje del servidor recibido (cifrado):", encryptedResponseData);
 
       // Asumir que solo la última parte es el mensaje cifrado
@@ -133,7 +135,8 @@ function sendRequest(url, method, headers, body) {
       const encryptedMessage = encryptedResponseData.slice(jsonPartEnd);
 
       const responseData = decryptData(encryptedMessage, secret);
-      console.log("Mensaje descifrado:", responseData);
+      console.log("\nMensaje descifrado:", responseData);
+      
 
       if (!responseData) {
         reject(new Error('Failed to decrypt response'));
@@ -161,6 +164,7 @@ function sendRequest(url, method, headers, body) {
         };
         handleResponse(response);
         resolve(response);
+        console.log('\x1b[34m%s\x1b[0m', '\nFin del mensaje del servidor\n');
       } else {
         reject(new Error('Response format invalid'));
       }
@@ -177,12 +181,16 @@ function sendRequest(url, method, headers, body) {
 
 function encryptData(plaintext, secret) {
   const iv = crypto.randomBytes(16);
-  console.log("Generated IV (encrypt):", iv.toString('hex'));
+  //console.log("Generated IV (encrypt):", iv.toString('hex'));
   const key = crypto.createHash('sha256').update(secret).digest().slice(0, 32);
   const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
-  console.log("plaintext: ", plaintext);
+  console.log('\x1b[32m%s\x1b[0m', 'Nuevo mensaje del cliente\n');
+
+  console.log("Mensaje a enviar: \n"+plaintext+'\n');
   let encrypted = cipher.update(plaintext, 'utf8', 'hex');
   encrypted += cipher.final('hex');
+  console.log("Mensaje cifrado:\n", encrypted);
+  console.log('\x1b[32m%s\x1b[0m', 'Mensaje del cliente enviado\n');
   return iv.toString('hex') + encrypted;
 }
 
@@ -230,6 +238,7 @@ function handleResponse(response) {
   } else {
     console.log('Unexpected status:', response.statusCode, response.statusMessage);
   }
+  //console.log('\x1b[34m%s\x1b[0m', '\nFin del mensaje del servidor\n');
 }
 
 module.exports = {

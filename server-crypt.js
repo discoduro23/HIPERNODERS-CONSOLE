@@ -122,17 +122,18 @@ const server = net.createServer((socket) => {
         message = JSON.parse(data.toString());
       } else {
         const encryptedMessage = data.toString();
-        console.log('Mensaje cifrado del cliente:', encryptedMessage);
+        //console.log('Mensaje cifrado del cliente:', encryptedMessage);
         const decryptedMessage = decryptData(encryptedMessage, secret);
-        console.log('Mensaje descifrado del cliente:', decryptedMessage);
+        console.log('Mensaje descifrado del cliente:','\n'+ decryptedMessage);
+        console.log('\x1b[32m%s\x1b[0m', 'Fin del mensaje del cliente \n');
 
         const requestLines = decryptedMessage.split('\r\n');
-        console.log('\nMensaje HTTP descifrado del cliente:', requestLines);
+        //console.log('\nMensaje HTTP descifrado del cliente:', requestLines);
         const requestLine = requestLines[0].split(' ');
-        console.log('\nLínea de solicitud HTTP:', requestLine);
+        //console.log('\nLínea de solicitud HTTP:', requestLine);
         const method = requestLine[0];
         route = requestLine[1];
-        console.log('\nRuta solicitada:', route);
+        //console.log('\nRuta solicitada:', route);
 
         for (let i = 1; i < requestLines.length; i++) {
           if (requestLines[i].startsWith('x-api-key:')) {
@@ -140,7 +141,7 @@ const server = net.createServer((socket) => {
             break;
           }
         }
-        console.log('\nAPI Key Line:', apikeyLine);
+        //console.log('\nAPI Key Line:', apikeyLine);
 
         message = {
           type: 'secure-message',
@@ -171,6 +172,7 @@ const server = net.createServer((socket) => {
           console.log('\nSecreto compartido establecido:', secret.toString('hex'));
 
           socket.write(JSON.stringify({ type: 'key-exchange-complete' }));
+          console.log('\nConversación segura iniciada\n');
         } catch (error) {
           console.error('\nError al establecer el secreto compartido:', error);
           socket.write(JSON.stringify({ type: 'error', message: 'Failed to establish shared secret' }));
@@ -178,7 +180,7 @@ const server = net.createServer((socket) => {
         }
         break;
       case 'secure-message':
-        console.log('\nConversación segura iniciada\n');
+        //console.log('\nConversación segura iniciada\n');
         try {
           if (!secret) {
             throw new Error('Secreto compartido no establecido.');
@@ -204,7 +206,7 @@ function processRequest(socket, requestData, secret) {
   const method = requestData.method;
   const route = requestData.route;
   const params = new URLSearchParams(route.split('?')[1] || '');
-  console.log("path: " + route);
+  //console.log("path: " + route);
 
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -217,7 +219,7 @@ function processRequest(socket, requestData, secret) {
   }
 
   if (apikeyLine !== `x-api-key: ${API_KEY}`) {
-    console.log("apikey: " + apikeyLine);
+    //console.log("apikey: " + apikeyLine);
     writeSecurePacket(socket, secret, CONST.CODE_403, CONST.CODE_403_MESSAGE, 'text/plain', 'Invalid API key');
     log('ERROR', 'Invalid API key');
     return;
@@ -385,22 +387,25 @@ for (let iface in networkInterfaces) {
 
 function encryptData(plaintext, secret) {
   const iv = crypto.randomBytes(16);
-  console.log("Mensaje a cifrar: ", plaintext);
-  console.log("Generated IV (encrypt):", iv.toString('hex'));
+  console.log('\x1b[34m%s\x1b[0m', 'Nuevo mensaje del servidor\n');
+  console.log("Mensaje a cifrar: \n"+ plaintext +"\n");
+  //console.log("Generated IV (encrypt):", iv.toString('hex'));
   const key = crypto.createHash('sha256').update(secret).digest().slice(0, 32);
   const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
   let encrypted = cipher.update(plaintext, 'utf8', 'hex');
   encrypted += cipher.final('hex');
-  console.log("Mensaje cifrado: ", encrypted);
+  console.log("Mensaje cifrado: ", encrypted + "\n");
+  console.log('\x1b[34m%s\x1b[0m', 'Mensaje enviado al cliente\n');
   return iv.toString('hex') + encrypted;
 }
 
 function decryptData(encrypted, secret) {
   try {
-    console.log("Mensaje recibido a descifrar: ", encrypted);
+    console.log('\x1b[32m%s\x1b[0m', 'Nuevo mensaje del cliente\n');
+    console.log("Mensaje recibido a descifrar: ", encrypted + "\n");
     const iv = Buffer.from(encrypted.slice(0, 32), 'hex');
     const encryptedData = encrypted.slice(32);
-    console.log("IV: ", iv.toString('hex'));
+    //console.log("IV: ", iv.toString('hex'));
     const key = crypto.createHash('sha256').update(secret).digest().slice(0, 32);
     const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
     let decrypted = decipher.update(encryptedData, 'hex', 'utf8');

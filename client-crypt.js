@@ -18,13 +18,13 @@ function getInput(prompt) {
 async function manualRequest(callback) {
   let url = await getInput('Enter URL: ');
   if (!url) {
-    url = 'http://176.31.196.25/resources';
+    url = 'http://172.20.10.4:3008/resources';
   }
   if (!secret) {
     secret = await establishSharedSecret();
-    console.log('Secreto compartido generado:', secret.toString('hex'));
+    //console.log('Secreto compartido generado:', secret.toString('hex'));
   } else {
-    console.log('Secreto a usar:', secret.toString('hex'));
+    //console.log('Secreto a usar:', secret.toString('hex'));
   }
 
   let method;
@@ -71,7 +71,7 @@ async function manualRequest(callback) {
 async function handleRequest(callback) {
   if (!secret) {
     secret = await establishSharedSecret();
-    console.log('Secreto compartido establecido:', secret.toString('hex'));
+    //console.log('Secreto compartido establecido:', secret.toString('hex'));
   } else {
     console.log('Secreto a usar:', secret.toString('hex'));
   }
@@ -79,7 +79,7 @@ async function handleRequest(callback) {
   let cacheHeaders = {};
   const headers = { ...defaultHeaders, ...cacheHeaders };
   try {
-    const response = await sendRequest('http://176.31.196.25/resources', 'GET', headers, null);
+    const response = await sendRequest('http://172.20.10.4:3008/resources', 'GET', headers, null);
     console.log(response);
   } catch (err) {
     console.error('Error:', err);
@@ -88,10 +88,12 @@ async function handleRequest(callback) {
 }
 
 async function showMenu() {
-  console.log('Menu:');
-  console.log('1) Enter the function parameters manually');
-  console.log('2) Make the GET function (predefined before)');
+  console.log('\x1b[35m%s\x1b[0m', '\nMenu:');
+  console.log('\x1b[35m%s\x1b[0m', '1) Enter the function parameters manually');
+  console.log('\x1b[35m%s\x1b[0m', '2) Make the GET function (predefined before)');
   const choice = await getInput('Choose an option: ');
+
+
 
   switch (choice) {
     case '1':
