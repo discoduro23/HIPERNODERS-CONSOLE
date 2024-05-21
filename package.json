@@ -4,7 +4,7 @@
   "description": "NodeJS Http API",
   "main": "main.js",
   "scripts": {
-    "test": "jest"
+    "test": "jest --json --outputFile=test/test-report.json"
   },
   "jest": {
     "testEnvironment": "node"
