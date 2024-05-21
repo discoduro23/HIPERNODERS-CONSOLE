@@ -9,7 +9,7 @@ on:
       - main
 
 jobs:
-  test:
+  server-test:
     runs-on: ubuntu-latest
 
     steps:
