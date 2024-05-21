@@ -1,6 +1,6 @@
 {
   "name": "hipernodersjs",
-  "version": "2.0.0.2",
+  "version": "1.0.0",
   "description": "NodeJS Http API",
   "main": "main.js",
   "scripts": {
