@@ -29,7 +29,7 @@ jobs:
         mkdir -p data
         mkdir -p data/backup
         mkdir -p images
-        mkdir -p test
+        mkdir -p test  # Asegurarse de que la carpeta test existe
 
     - name: Verify JSON files exist
       run: |
@@ -44,10 +44,18 @@ jobs:
       run: echo "API_KEY=hiperKEY_24" > .env
 
     - name: Run tests and generate log in the test folder
-      run: npm test
+      run: npm test -- --json --outputFile=test/test-results.json
 
     - name: Upload test log from test folder
       uses: actions/upload-artifact@v2
       with:
         name: test-results
-        path: test/test-report.json
+        path: test/test-results.json
+
+    - name: Commit and push test results
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add test/test-results.json
+        git commit -m "Add test results"
+        git push
