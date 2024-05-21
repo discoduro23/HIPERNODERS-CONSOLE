@@ -122,8 +122,9 @@ const server = net.createServer((socket) => {
         message = JSON.parse(data.toString());
       } else {
         const encryptedMessage = data.toString();
+        console.log('Mensaje cifrado del cliente:', encryptedMessage);
         const decryptedMessage = decryptData(encryptedMessage, secret);
-        //console.log('Mensaje descifrado del cliente:', decryptedMessage);
+        console.log('Mensaje descifrado del cliente:', decryptedMessage);
 
         const requestLines = decryptedMessage.split('\r\n');
         console.log('\nMensaje HTTP descifrado del cliente:', requestLines);
@@ -396,11 +397,13 @@ function encryptData(plaintext, secret) {
 
 function decryptData(encrypted, secret) {
   try {
+    console.log("Mensaje recibido a descifrar: ", encrypted);
     const iv = Buffer.from(encrypted.slice(0, 32), 'hex');
-    encrypted = encrypted.slice(32);
+    const encryptedData = encrypted.slice(32);
+    console.log("IV: ", iv.toString('hex'));
     const key = crypto.createHash('sha256').update(secret).digest().slice(0, 32);
     const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
-    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+    let decrypted = decipher.update(encryptedData, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
     return decrypted;
   } catch (err) {

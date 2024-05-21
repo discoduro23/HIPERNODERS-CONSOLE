@@ -1,6 +1,8 @@
 const readline = require('readline');
 const { establishSharedSecret, sendRequest, defaultHeaders } = require('./modules/clientlib-crypto');
 
+let secret = null; // Definir la variable global secret
+
 function getInput(prompt) {
   const rl = readline.createInterface({
     input: process.stdin,
@@ -18,9 +20,12 @@ async function manualRequest(callback) {
   if (!url) {
     url = 'http://192.168.68.135/resources';
   }
-
-  const secret = await establishSharedSecret();
-  console.log('Secreto compartido generado:', secret.toString('hex'));
+  if (!secret) {
+    secret = await establishSharedSecret();
+    console.log('Secreto compartido generado:', secret.toString('hex'));
+  } else {
+    console.log('Secreto a usar:', secret.toString('hex'));
+  }
 
   let method;
   do {
@@ -64,8 +69,12 @@ async function manualRequest(callback) {
 }
 
 async function handleRequest(callback) {
-  const secret = await establishSharedSecret();
-  console.log('Secret established:', secret);
+  if (!secret) {
+    secret = await establishSharedSecret();
+    console.log('Secreto compartido establecido:', secret.toString('hex'));
+  } else {
+    console.log('Secreto a usar:', secret.toString('hex'));
+  }
 
   let cacheHeaders = {};
   const headers = { ...defaultHeaders, ...cacheHeaders };
