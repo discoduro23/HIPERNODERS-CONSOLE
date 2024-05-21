@@ -1,5 +1,6 @@
-# 👩🏻‍💻 HTTP group project
-https://github.com/pitazzo/usj-http-project/blob/master/README.md?plain=1
+# [👩🏻‍💻 HTTP group project](https://github.com/pitazzo/usj-http-project/blob/master/README.md?plain=1)
+
+To evaluate this project you shoud install node (tested w/ v18) and its packages. to install the packages use 'npm install' inside the project root folder.
 
 ## 🛂 Mandatory features
 

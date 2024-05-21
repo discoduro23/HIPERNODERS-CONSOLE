@@ -6,6 +6,7 @@ const server = require('../server.js');
 const BASE_URL = 'http://localhost:3008'; // Cambia esto por la URL de tu servidor
 
 const dataDir = path.join(__dirname, '../data');
+const imagesDir = path.join(__dirname, '../images');
 const backupDir = path.join(__dirname, '../data/backup');
 
 // Función para crear una copia de seguridad de los archivos JSON
@@ -36,23 +37,39 @@ beforeAll((done) => {
 
 // Restaurar los archivos originales después de los tests
 afterAll((done) => {
+  //erase test image if exists
+  if (fs.existsSync(path.join(imagesDir, 'test.png'))) {
+    fs.unlinkSync(path.join(imagesDir, 'test.png'));
+  }
   restoreJsonFiles();
   server.stop(done); // Ensure the server is stopped after tests
 });
 
 // Tests
 describe('Server Endpoints', () => {
-  it('should return 404 not found', (done) => {
-    request(BASE_URL)
-    .get('/')
-    .set('X-API-Key', 'hiperKEY_24')
-      .expect(404, done);
-  });
+  describe('API key', () => {
 
-  it('should return 403 forbidden', (done) => {
-    request(BASE_URL)
-      .get('/resources')
-      .expect(403, done);
+    it('should return 403 forbidden for no key', (done) => {
+      request(BASE_URL)
+        .get('/resources')
+        .expect(403, done);
+    });
+
+    it('should return 200 for valid key', (done) => {
+      request(BASE_URL)
+      .get('/')
+      .set('X-API-Key', 'hiperKEY_24')
+      .expect('Content-Type', 'text/html')
+      .expect(200)
+      .end(done);
+    });
+
+    it('should return 403 for invalid key', (done) => {
+      request(BASE_URL)
+        .get('/resources')
+        .set('X-API-Key', 'invalid-api-key')
+        .expect(403, done);
+    });
   });
 
   describe('GET /resources', () => {
@@ -71,13 +88,7 @@ describe('Server Endpoints', () => {
         })
         .end(done);
     });
-
-    it('should return 403 for invalid API key', (done) => {
-      request(BASE_URL)
-        .get('/resources')
-        .set('X-API-Key', 'invalid-api-key')
-        .expect(403, done);
-    });
+    
   });
 
   describe('POST /resources', () => {
