@@ -44,7 +44,7 @@ jobs:
       run: echo "API_KEY=hiperKEY_24" > .env
 
     - name: Run tests and generate log in the test folder
-      run: npm test -- --json --outputFile=test/test-results.json
+      run: npm test
 
     - name: Upload test log from test folder
       uses: actions/upload-artifact@v2
