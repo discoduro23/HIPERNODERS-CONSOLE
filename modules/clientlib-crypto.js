@@ -156,7 +156,8 @@ function sendRequest(url, method, headers, body) {
           statusCode,
           statusMessage,
           headers: responseHeaders,
-          body: responseBody
+          body: responseBody,
+          method: method,
         };
         handleResponse(response);
         resolve(response);
