@@ -167,29 +167,4 @@ describe('Server Endpoints', () => {
         .expect(400, done);
     });
   });
-
-  /*describe('GET /images/:filename', () => {
-    it('should return an image', (done) => {
-      fs.readFile.mockImplementationOnce((path, callback) => {
-        callback(null, Buffer.from('image data'));
-      });
-
-      request(BASE_URL)
-        .get('/images/test.png')
-        .set('X-API-Key', 'hiperKEY_24')
-        .expect('Content-Type', /png/)
-        .expect(200, done);
-    });
-
-    it('should return 404 for non-existent image', (done) => {
-      fs.readFile.mockImplementationOnce((path, callback) => {
-        callback(new Error('File not found'));
-      });
-
-      request(BASE_URL)
-        .get('/images/nonexistent.png')
-        .set('X-API-Key', 'hiperKEY_24')
-        .expect(404, done);
-    });
-  });*/
 });
