@@ -3,14 +3,12 @@
   "version": "1.0.0",
   "description": "NodeJS http api",
   "main": "main.js",
-  
-    "scripts": {
-      "test": "jest --detectOpenHandles"
-    },
-    "jest": {
-      "testEnvironment": "node"
-    },
-  
+  "scripts": {
+    "test": "jest --detectOpenHandles"
+  },
+  "jest": {
+    "testEnvironment": "node"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/discoduro23/HiperNodersJS.git"
