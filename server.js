@@ -160,8 +160,17 @@ function processRequest(socket, requestData) {
   }
 
   if (method === 'GET' && path === '/') {
-    writePacket(socket, CONST.CODE_404, CONST.CODE_404_MESSAGE);
-    log('ERROR', 'Root endpoint not found');
+    // Send a static website (the one inside staticHtml folder)
+    fs.readFile('staticHtml/apiRoot.html', (err, data) => {
+      if (err) {
+        writePacket(socket, CONST.CODE_500, CONST.CODE_500_MESSAGE);
+        log('ERROR', 'Error reading apiRoot.html');
+        return;
+      }
+      writePacket(socket, CONST.CODE_200, CONST.CODE_200_MESSAGE, 'text/html', data);
+      log('INFO', 'Api Root html sent');
+    });
+    
   } else if (method === 'GET' && path === '/resources') {
     const ifModifiedSince = headers['if-modified-since'];
     const lastModified = resources[0].lastModified;
