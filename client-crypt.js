@@ -18,7 +18,7 @@ function getInput(prompt) {
 async function manualRequest(callback) {
   let url = await getInput('Enter URL: ');
   if (!url) {
-    url = 'http://172.20.10.4:3008/resources';
+    url = 'http://176.31.196.25:3008/resources';
   }
   if (!secret) {
     secret = await establishSharedSecret();
@@ -79,7 +79,7 @@ async function handleRequest(callback) {
   let cacheHeaders = {};
   const headers = { ...defaultHeaders, ...cacheHeaders };
   try {
-    const response = await sendRequest('http://172.20.10.4:3008/resources', 'GET', headers, null);
+    const response = await sendRequest('http://176.31.196.25:3008/resources', 'GET', headers, null);
     console.log(response);
   } catch (err) {
     console.error('Error:', err);

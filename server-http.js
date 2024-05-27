@@ -89,6 +89,33 @@ app.route('/resources')
     saveResources();
     res.status(201).send(`Resource added successfully with ID ${newResource.id}`);
     log('INFO', `Resource added with ID ${newResource.id}`);
+  })
+  .delete((req, res) => {
+    const id = parseInt(req.body.id);
+    const index = resources.findIndex(resource => resource.id === id);
+    if (index === -1) {
+      res.status(404).send('Resource not found');
+      log('ERROR', `Resource with ID ${id} not found`);
+    } else {
+      resources.splice(index, 1);
+      saveResources();
+      res.status(200).send('Resource deleted');
+      log('INFO', `Resource with ID ${id} deleted`);
+    }
+  })
+  .put((req, res) => {
+    const id = parseInt(req.body.id);
+    const index = resources.findIndex(resource => resource.id === id);
+    if (index === -1) {
+      res.status(404).send('Resource not found');
+      log('ERROR', `Resource with ID ${id} not found`);
+    } else {
+      resources[index].nombre = req.body.nombre || resources[index].nombre;
+      resources[index].provincias = req.body.provincias || resources[index].provincias;
+      saveResources();
+      res.status(204).send('Resource updated');
+      log('INFO', `Resource with ID ${id} updated`);
+    }
   });
 
 app.post('/images', upload.single('file'), (req, res) => {

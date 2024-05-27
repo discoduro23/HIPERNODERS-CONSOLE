@@ -7,8 +7,7 @@ const defaultHeaders = {
 };
 const options = {
   port: 3008,
-  //host: '176.31.196.25'
-  host: '172.20.10.4'
+  host: '176.31.196.25'
 };
 
 let dh;
